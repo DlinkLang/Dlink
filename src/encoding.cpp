@@ -86,7 +86,7 @@ namespace dlink::encoding
 		unsigned char uthird = third;
 		unsigned char ufourth = fourth;
 
-		std::size_t length = encoded_length(ufirst);
+		std::size_t length = decoded_length(ufirst);
 
 		switch (length)
 		{
@@ -115,7 +115,7 @@ namespace dlink::encoding
 		for (std::size_t i = 0; i < string.size(); )
 		{
 			char character = string[i];
-			std::size_t length = encoded_length(character);
+			std::size_t length = decoded_length(character);
 
 			switch (length)
 			{
@@ -533,8 +533,8 @@ namespace dlink::encoding
 		{
 			if (get_endian() == endian::little_endian)
 			{
-				std::swap(*(reinterpret_cast<std::uint8_t*>(&character) + 2),
-						  *(reinterpret_cast<std::uint8_t*>(&character) + 3));
+				std::swap(*reinterpret_cast<std::uint8_t*>(&character),
+						  *(reinterpret_cast<std::uint8_t*>(&character) + 1));
 			}
 
 			return { static_cast<char16_t>(character) };
