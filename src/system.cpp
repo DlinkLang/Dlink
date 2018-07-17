@@ -3,11 +3,20 @@
 #include <cstdint>
 #include <stdexcept>
 
+#ifdef DLINK_MULTITHREADING
+#	include <mutex>
+#endif
+
 namespace dlink
 {
 	dlink::endian get_endian()
 	{
 		static dlink::endian endian = dlink::endian::none;
+
+#ifdef DLINK_MULTITHREADING
+		static std::mutex mutex;
+		std::lock_guard<std::mutex> guard(mutex);
+#endif
 
 		if (endian == dlink::endian::none)
 		{

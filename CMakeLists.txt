@@ -10,6 +10,8 @@ set(INCLUDE_DIR "./include")
 set(SOURCE_DIR "./src")
 set(OUTPUT_DIR "./bin")
 
+set(MULTITHREADING ON CACHE BOOL "")
+
 include_directories(${INCLUDE_DIR})
 file(GLOB SOURCE_LIST ${SOURCE_DIR}/*.cpp)
 
@@ -17,6 +19,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
 
 add_definitions(-D__STDC_CONSTANT_MACROS)
 add_definitions(-D__STDC_LIMIT_MACROS)
+
+if(MULTITHREADING)
+	add_definitions(-DDLINK_MULTITHREADING)
+endif(MULTITHREADING)
 
 add_library(${PROJECT_NAME} STATIC ${SOURCE_LIST})
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
