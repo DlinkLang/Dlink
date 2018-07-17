@@ -4,10 +4,6 @@
 #include <cstdint>
 #include <ostream>
 
-#ifdef DLINK_MULTITHREADING
-#	include <atomic>
-#endif
-
 #define DLINK_MAJOR (1)
 #define DLINK_MINOR (0)
 #define DLINK_PATCH (0)
@@ -25,20 +21,6 @@ namespace dlink
 
 	class compiler_options final
 	{
-	public:
-		using int32_t =
-#ifdef DLINK_MULTITHREADING
-			std::atomic_int32_t;
-#else
-			std::int32_t;
-#endif
-		using bool_t =
-#ifdef DLINK_MULTITHREADING
-			std::atomic_bool;
-#else
-			bool;
-#endif
-
 	public:
 		compiler_options() = default;
 		compiler_options(const compiler_options& options) = delete;
@@ -59,13 +41,14 @@ namespace dlink
 		void help(bool new_help) noexcept;
 		bool version() const noexcept;
 		void version(bool new_version) noexcept;
+
 		std::int32_t count_of_threads() const noexcept;
 		void count_of_threads(std::int32_t new_count_of_threads) noexcept;
 
 	private:
-		bool_t help_ = false;
-		bool_t version_ = false;
-		int32_t count_of_threads_ = 0;
+		bool help_ = false;
+		bool version_ = false;
+		std::int32_t count_of_threads_ = 0;
 
 	public:
 		static constexpr std::int32_t max_count_of_threads = 128;

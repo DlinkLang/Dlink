@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <iostream>
-#include <mutex>
 
 #include <boost/program_options.hpp>
 
@@ -10,11 +9,6 @@ namespace dlink
 {
 	void compiler_options::clear()
 	{
-#ifdef DLINK_MULTITHREADING
-		static std::mutex mutex;
-		std::lock_guard<std::mutex> guard(mutex);
-#endif
-
 		help_ = false;
 		version_ = false;
 
@@ -37,6 +31,7 @@ namespace dlink
 	{
 		version_ = new_version;
 	}
+
 	std::int32_t compiler_options::count_of_threads() const noexcept
 	{
 		return count_of_threads_;
