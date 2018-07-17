@@ -65,8 +65,14 @@ namespace dlink
 	private:
 		bool_t help_ = false;
 		bool_t version_ = false;
-		int32_t count_of_threads_ = -1;
+		int32_t count_of_threads_ = 0;
+
+	public:
+		static constexpr std::int32_t max_count_of_threads = 128;
 	};
+
+	bool parse_command_line(int argc, char** argv, compiler_options& option);
+	bool parse_command_line(std::ostream& stream, int argc, char** argv, compiler_options& option);
 }
 
 #endif

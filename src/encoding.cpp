@@ -12,7 +12,7 @@ namespace dlink::encoding
 		if (is_invalid_unicode(character))
 			throw std::invalid_argument("The argument 'character' isn't a valid Unicode character.");
 
-		std::size_t length = encoded_length(character);
+		const std::size_t length = encoded_length(character);
 
 		switch (length)
 		{
@@ -62,7 +62,7 @@ namespace dlink::encoding
 		if (string.size() > max_encoded_length)
 			throw std::invalid_argument("The argument 'string' isn't a valid Unicode character encoded in UTF-8.");
 		
-		std::size_t length = encoded_length(string[0]);
+		const std::size_t length = encoded_length(string[0]);
 
 		switch (length)
 		{
@@ -81,12 +81,12 @@ namespace dlink::encoding
 	}
 	char32_t utf8::decode_char(char first, char second, char third, char fourth)
 	{
-		unsigned char ufirst = first;
-		unsigned char usecond = second;
-		unsigned char uthird = third;
-		unsigned char ufourth = fourth;
+		const unsigned char ufirst = first;
+		const unsigned char usecond = second;
+		const unsigned char uthird = third;
+		const unsigned char ufourth = fourth;
 
-		std::size_t length = decoded_length(ufirst);
+		const std::size_t length = decoded_length(ufirst);
 
 		switch (length)
 		{
@@ -114,8 +114,8 @@ namespace dlink::encoding
 
 		for (std::size_t i = 0; i < string.size(); )
 		{
-			char character = string[i];
-			std::size_t length = decoded_length(character);
+			const char character = string[i];
+			const std::size_t length = decoded_length(character);
 
 			switch (length)
 			{
@@ -202,7 +202,7 @@ namespace dlink::encoding
 	}
 	std::size_t utf8::decoded_length(char first)
 	{
-		unsigned char ufirst = first;
+		const unsigned char ufirst = first;
 
 		if (ufirst < 0x80)
 		{
@@ -250,7 +250,7 @@ namespace dlink::encoding
 		if (is_invalid_unicode(character))
 			throw std::invalid_argument("The argument 'character' isn't a valid Unicode character.");
 		
-		std::size_t length = encoded_length(character);
+		const std::size_t length = encoded_length(character);
 
 		if (length == 1)
 		{
