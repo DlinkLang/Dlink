@@ -2,8 +2,53 @@
 
 #include <Dlink/system.hpp>
 
+#include <algorithm>
 #include <stdexcept>
 #include <type_traits>
+
+namespace dlink::encoding
+{
+	encoding_type detect_encoding(std::istream& stream)
+	{
+		static const char zero[2]{ 0, 0 };
+
+		char bom_buffer[4];
+		stream.read(bom_buffer, 3);
+		
+		if (std::equal(bom_buffer, bom_buffer + 3, encoding::utf8::byte_order_mark))
+		{
+			return encoding_type::utf8;
+		}
+		else if (std::equal(bom_buffer, bom_buffer + 2, encoding::utf16::byte_order_mark))
+		{
+			stream.read(bom_buffer + 3, 1);
+
+			if (std::equal(bom_buffer + 2, bom_buffer + 4, zero))
+			{
+				return encoding_type::utf32;
+			}
+			else
+			{
+				return encoding_type::utf16;
+			}
+		}
+		else if (std::equal(bom_buffer, bom_buffer + 2, encoding::utf16be::byte_order_mark))
+		{
+			return encoding_type::utf16be;
+		}
+		else if (std::equal(bom_buffer, bom_buffer + 2, zero))
+		{
+			stream.read(bom_buffer + 3, 1);
+
+			if (std::equal(bom_buffer + 2, bom_buffer + 4, encoding::utf16be::byte_order_mark))
+			{
+				return encoding_type::utf32be;
+			}
+		}
+
+		return encoding_type::none;
+	}
+}
 
 namespace dlink::encoding
 {

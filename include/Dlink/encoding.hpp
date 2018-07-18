@@ -3,8 +3,23 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <istream>
 #include <string>
 #include <string_view>
+
+namespace dlink
+{
+	enum class encoding_type
+	{
+		none,
+
+		utf8,
+		utf16,
+		utf16be,
+		utf32,
+		utf32be,
+	};
+}
 
 namespace dlink::encoding
 {
@@ -16,6 +31,8 @@ namespace dlink::encoding
 	{
 		return character >= 0x110000;
 	}
+
+	encoding_type detect_encoding(std::istream& stream);
 
 	class utf8 final
 	{

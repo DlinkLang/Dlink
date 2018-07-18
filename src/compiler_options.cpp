@@ -1,6 +1,8 @@
 #include <Dlink/compiler_options.hpp>
 
 #include <algorithm>
+#include <cctype>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 
@@ -18,6 +20,8 @@ namespace dlink
 #endif
 		input_files_.clear();
 		output_file_.clear();
+
+		input_encoding_ = encoding_type::none;
 	}
 
 	void compiler_options::add_input(const std::string& string)
@@ -78,6 +82,15 @@ namespace dlink
 	{
 		output_file_ = new_output_file;
 	}
+
+	encoding_type compiler_options::input_encoding() const noexcept
+	{
+		return input_encoding_;
+	}
+	void compiler_options::input_encoding(encoding_type new_encoding_type) noexcept
+	{
+		input_encoding_ = new_encoding_type;
+	}
 }
 
 namespace dlink
@@ -110,6 +123,10 @@ namespace dlink
 #endif
 			("output,o", po::value<std::string>(), "Place the output into 'arg'.");
 
+		po::options_description flag;
+		flag.add_options()
+			("input-encoding", po::value<std::string>(), "Set the input encoding.");
+
 		po::options_description hidden;
 		hidden.add_options()
 			("input-file", po::value<std::vector<std::string>>(), "");
@@ -118,10 +135,10 @@ namespace dlink
 		p.add("input-file", -1);
 
 		po::options_description visible("Options");
-		visible.add(generic).add(config);
+		visible.add(generic).add(config).add(flag);
 
 		po::options_description description;
-		description.add(generic).add(config).add(hidden);
+		description.add(visible).add(hidden);
 
 		try
 		{
@@ -130,6 +147,10 @@ namespace dlink
 				options(description).positional(p).run(), map);
 			po::notify(map);
 			
+			//
+			// Parse
+			//
+			// Generic
 			if (map.count("help"))
 			{
 				option.help(true);
@@ -139,6 +160,7 @@ namespace dlink
 				option.version(true);
 			}
 
+			// Config
 #ifdef DLINK_MULTITHREADING
 			if (map.count("job"))
 			{
@@ -162,6 +184,45 @@ namespace dlink
 				}
 			}
 
+			// Flag
+			std::string input_encoding_temp;
+			if (map.count("input-encoding"))
+			{
+				std::string encoding = map["input-encoding"].as<std::string>();
+				std::transform(encoding.begin(), encoding.end(), encoding.begin(), ::tolower);
+
+				if (encoding == "utf8" || encoding == "utf-8" || encoding == "u8")
+				{
+					option.input_encoding(encoding_type::utf8);
+				}
+				else if (encoding == "utf16" || encoding == "utf-16" || encoding == "u16" ||
+						 encoding == "utf16le" || encoding == "utf-16le" || encoding == "u16le")
+				{
+					option.input_encoding(encoding_type::utf16);
+				}
+				else if (encoding == "utf16be" || encoding == "utf-16be" || encoding == "u16be")
+				{
+					option.input_encoding(encoding_type::utf16be);
+				}
+				else if (encoding == "utf32" || encoding == "utf-32" || encoding == "u32" ||
+					encoding == "utf32le" || encoding == "utf-32le" || encoding == "u32le")
+				{
+					option.input_encoding(encoding_type::utf32);
+				}
+				else if (encoding == "utf32be" || encoding == "utf-32be" || encoding == "u32be")
+				{
+					option.input_encoding(encoding_type::utf32be);
+				}
+				else
+				{
+					input_encoding_temp = encoding;
+				}
+			}
+
+			//
+			// Run
+			//
+			// Generic
 			if (option.help())
 			{
 				stream << "Usage: " << argv[0] << " [options...] files...\n";
@@ -179,7 +240,9 @@ namespace dlink
 
 				return false;
 			}
-			else if (option.input_files().size())
+
+			// Config
+			if (option.input_files().size() != 0)
 			{
 				const std::vector<std::string>::const_iterator duplicate_iter =
 					std::unique(const_cast<std::vector<std::string>&>(option.input_files()).begin(),
@@ -191,6 +254,47 @@ namespace dlink
 
 					return false;
 				}
+			}
+			else if (option.input_files().size() == 0)
+			{
+				stream << "Error: no input files.\n\n";
+
+				return false;
+			}
+
+			// Flag
+			if (!input_encoding_temp.empty())
+			{
+				stream << "Error: the argument ('" << input_encoding_temp << "') for option '--input-encoding' is invalid";
+
+				if (input_encoding_temp.find('8') != std::string::npos)
+				{
+					stream << "; did you mean 'utf8'?\n\n";
+				}
+				else if (input_encoding_temp.find("16") != std::string::npos)
+				{
+					stream << "; did you mean 'utf16'?\n\n";
+				}
+				else if (input_encoding_temp.find("32") != std::string::npos)
+				{
+					stream << "; did you mean 'utf32'?\n\n";
+				}
+				else
+				{
+					stream << ".\n\n";
+				}
+
+				return false;
+			}
+			else if (option.input_encoding() == encoding_type::none)
+			{
+				std::ifstream input_stream(option.input_files()[0]);
+				encoding_type encoding = encoding::detect_encoding(input_stream);
+
+				input_stream.close();
+
+				option.input_encoding(
+					encoding == encoding_type::none ? encoding_type::utf8 : encoding);
 			}
 
 			return true;

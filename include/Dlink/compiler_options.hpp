@@ -1,6 +1,8 @@
 #ifndef DLINK_HEADER_COMPILER_OPTIONS_HPP
 #define DLINK_HEADER_COMPILER_OPTIONS_HPP
 
+#include <Dlink/encoding.hpp>
+
 #include <cstdint>
 #include <ostream>
 #include <string>
@@ -56,6 +58,9 @@ namespace dlink
 		const std::string& output_file() const noexcept;
 		void output_file(const std::string_view& new_output_file);
 
+		encoding_type input_encoding() const noexcept;
+		void input_encoding(encoding_type new_encoding_type) noexcept;
+
 	private:
 		bool help_ = false;
 		bool version_ = false;
@@ -65,6 +70,8 @@ namespace dlink
 #endif
 		std::vector<std::string> input_files_;
 		std::string output_file_;
+
+		encoding_type input_encoding_ = encoding_type::none;
 
 	public:
 		static constexpr std::int32_t max_count_of_threads = 128;
