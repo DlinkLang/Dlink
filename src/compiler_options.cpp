@@ -13,7 +13,9 @@ namespace dlink
 		help_ = false;
 		version_ = false;
 
+#ifdef DLINK_MULTITHREADING
 		count_of_threads_ = 0;
+#endif
 		input_files_.clear();
 		output_file_.clear();
 	}
@@ -50,14 +52,20 @@ namespace dlink
 
 	std::int32_t compiler_options::count_of_threads() const noexcept
 	{
+#ifdef DLINK_MULTITHREADING
 		return count_of_threads_;
+#else
+		return 1;
+#endif
 	}
+#ifdef DLINK_MULTITHREADING
 	void compiler_options::count_of_threads(std::int32_t new_count_of_threads) noexcept
 	{
 		new_count_of_threads = std::clamp(new_count_of_threads, 0, max_count_of_threads);
 
 		count_of_threads_ = new_count_of_threads;
 	}
+#endif
 	const std::vector<std::string>& compiler_options::input_files() const noexcept
 	{
 		return input_files_;
@@ -97,7 +105,9 @@ namespace dlink
 
 		po::options_description config;
 		config.add_options()
-			("job,j", po::value<std::int32_t>(), "Set the maximum number of threads to use when compiling.")
+#ifdef DLINK_MULTITHREADING
+			("jobs,j", po::value<std::int32_t>(), "Set the maximum number of threads to use when compiling.")
+#endif
 			("output,o", po::value<std::string>(), "Place the output into 'arg'.");
 
 		po::options_description hidden;
@@ -129,6 +139,7 @@ namespace dlink
 				option.version(true);
 			}
 
+#ifdef DLINK_MULTITHREADING
 			if (map.count("job"))
 			{
 				const std::int32_t count =
@@ -136,6 +147,7 @@ namespace dlink
 
 				option.count_of_threads(count);
 			}
+#endif
 			if (map.count("output"))
 			{
 				option.output_file(map["output"].as<std::string>());

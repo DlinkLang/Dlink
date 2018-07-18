@@ -49,7 +49,9 @@ namespace dlink
 		void version(bool new_version) noexcept;
 
 		std::int32_t count_of_threads() const noexcept;
+#ifdef DLINK_MULTITHREADING
 		void count_of_threads(std::int32_t new_count_of_threads) noexcept;
+#endif
 		const std::vector<std::string>& input_files() const noexcept;
 		const std::string& output_file() const noexcept;
 		void output_file(const std::string_view& new_output_file);
@@ -58,7 +60,9 @@ namespace dlink
 		bool help_ = false;
 		bool version_ = false;
 
+#ifdef DLINK_MULTITHREADING
 		std::int32_t count_of_threads_ = 1;
+#endif
 		std::vector<std::string> input_files_;
 		std::string output_file_;
 
