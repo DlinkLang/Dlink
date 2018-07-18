@@ -3,6 +3,9 @@
 
 #include <cstdint>
 #include <ostream>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #define DLINK_MAJOR (1)
 #define DLINK_MINOR (0)
@@ -36,6 +39,9 @@ namespace dlink
 	public:
 		void clear();
 
+		void add_input(const std::string& string);
+		void remove_input(const std::string& string);
+
 	public:
 		bool help() const noexcept;
 		void help(bool new_help) noexcept;
@@ -44,11 +50,17 @@ namespace dlink
 
 		std::int32_t count_of_threads() const noexcept;
 		void count_of_threads(std::int32_t new_count_of_threads) noexcept;
+		const std::vector<std::string>& input_files() const noexcept;
+		const std::string& output_file() const noexcept;
+		void output_file(const std::string_view& new_output_file);
 
 	private:
 		bool help_ = false;
 		bool version_ = false;
-		std::int32_t count_of_threads_ = 0;
+
+		std::int32_t count_of_threads_ = 1;
+		std::vector<std::string> input_files_;
+		std::string output_file_;
 
 	public:
 		static constexpr std::int32_t max_count_of_threads = 128;

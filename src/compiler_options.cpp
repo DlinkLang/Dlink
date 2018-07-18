@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <stdexcept>
 
 #include <boost/program_options.hpp>
 
@@ -13,6 +14,21 @@ namespace dlink
 		version_ = false;
 
 		count_of_threads_ = 0;
+		input_files_.clear();
+		output_file_.clear();
+	}
+
+	void compiler_options::add_input(const std::string& string)
+	{
+		input_files_.push_back(string);
+	}
+	void compiler_options::remove_input(const std::string& string)
+	{
+		std::vector<std::string>::iterator iter =
+			std::find(input_files_.begin(), input_files_.end(), string);
+
+		if (iter == input_files_.end())
+			throw std::invalid_argument("Failed to remove the argument 'string'.");
 	}
 
 	bool compiler_options::help() const noexcept
@@ -42,6 +58,18 @@ namespace dlink
 
 		count_of_threads_ = new_count_of_threads;
 	}
+	const std::vector<std::string>& compiler_options::input_files() const noexcept
+	{
+		return input_files_;
+	}
+	const std::string& compiler_options::output_file() const noexcept
+	{
+		return output_file_;
+	}
+	void compiler_options::output_file(const std::string_view& new_output_file)
+	{
+		output_file_ = new_output_file;
+	}
 }
 
 namespace dlink
@@ -62,17 +90,36 @@ namespace dlink
 		namespace po = boost::program_options;
 		option.clear();
 
-		po::options_description description("Options");
-		description.add_options()
+		po::options_description generic;
+		generic.add_options()
 			("help", "Display command-line options.")
-			("version", "Display compiler version information.")
-			("job,j", po::value<std::int32_t>(), "Set the maximum number of threads to use when compiling.");
+			("version", "Display compiler version information.");
+
+		po::options_description config;
+		config.add_options()
+			("job,j", po::value<std::int32_t>(), "Set the maximum number of threads to use when compiling.")
+			("output,o", po::value<std::string>(), "Place the output into 'arg'.");
+
+		po::options_description hidden;
+		hidden.add_options()
+			("input-file", po::value<std::vector<std::string>>(), "");
+
+		po::positional_options_description p;
+		p.add("input-file", -1);
+
+		po::options_description visible("Options");
+		visible.add(generic).add(config);
+
+		po::options_description description;
+		description.add(generic).add(config).add(hidden);
 
 		try
 		{
 			po::variables_map map;
-			po::store(po::parse_command_line(argc, argv, description), map);
-								
+			po::store(po::command_line_parser(argc, argv).
+				options(description).positional(p).run(), map);
+			po::notify(map);
+			
 			if (map.count("help"))
 			{
 				option.help(true);
@@ -89,11 +136,24 @@ namespace dlink
 
 				option.count_of_threads(count);
 			}
+			if (map.count("output"))
+			{
+				option.output_file(map["output"].as<std::string>());
+			}
+			if (map.count("input-file"))
+			{
+				std::vector<std::string> files = map["input-file"].as<std::vector<std::string>>();
+				
+				for (const std::string& file : files)
+				{
+					option.add_input(file);
+				}
+			}
 
 			if (option.help())
 			{
 				stream << "Usage: " << argv[0] << " [options...] files...\n";
-				stream << description << '\n';
+				stream << visible << '\n';
 
 				return false;
 			}
@@ -103,9 +163,22 @@ namespace dlink
 					   << "(C) 2018. kmc7468 All rights reserved.\n\n"
 						  "https://github.com/DlinkLang/Dlink\n"
 						  "This is an open source software.\n"
-						  "nThe sources are licensed under The MIT License.\n\n";
+						  "The sources are licensed under The MIT License.\n\n";
 
 				return false;
+			}
+			else if (option.input_files().size())
+			{
+				const std::vector<std::string>::const_iterator duplicate_iter =
+					std::unique(const_cast<std::vector<std::string>&>(option.input_files()).begin(),
+								const_cast<std::vector<std::string>&>(option.input_files()).end());
+
+				if (duplicate_iter != option.input_files().end())
+				{
+					stream << "Error: duplicate input files('" << *duplicate_iter << "').\n\n";
+
+					return false;
+				}
 			}
 
 			return true;
