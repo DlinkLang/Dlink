@@ -12,6 +12,8 @@ namespace dlink::encoding
 	{
 		static const char zero[2]{ 0, 0 };
 
+		std::streampos pos = stream.tellg();
+
 		char bom_buffer[4];
 		stream.read(bom_buffer, 3);
 		
@@ -46,6 +48,7 @@ namespace dlink::encoding
 			}
 		}
 
+		stream.seekg(pos);
 		return encoding_type::none;
 	}
 }
