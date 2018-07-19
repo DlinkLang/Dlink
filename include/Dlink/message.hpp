@@ -2,6 +2,7 @@
 #define DLINK_HEADER_MESSAGE_HPP
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -16,6 +17,9 @@ namespace dlink
 
 	class message
 	{
+	public:
+		using ptr = std::shared_ptr<message>;
+
 	public:
 		message(std::uint16_t id, const std::string_view& what);
 		message(std::uint16_t id, const std::string_view& what, const std::string_view& where);
@@ -35,6 +39,9 @@ namespace dlink
 		virtual message_type type() const noexcept = 0;
 
 	public:
+		std::string full_id() const;
+
+	public:
 		std::uint16_t id() const noexcept;
 		const std::string& what() const noexcept;
 		const std::string& additional_note() const noexcept;
@@ -46,6 +53,8 @@ namespace dlink
 		std::string additional_note_;
 		std::string where_;
 	};
+
+	using message_ptr = message::ptr;
 
 	class info_message final : public message
 	{

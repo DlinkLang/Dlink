@@ -1,5 +1,7 @@
 #include <Dlink/message.hpp>
 
+#include <stdexcept>
+
 namespace dlink
 {
 	message::message(std::uint16_t id, const std::string_view& what)
@@ -17,6 +19,41 @@ namespace dlink
 		additional_note_(message.additional_note_)
 	{}
 	
+	std::string message::full_id() const
+	{
+		std::string result;
+		result.resize(2);
+
+		result[0] = 'D';
+
+		switch (type())
+		{
+		case message_type::info:
+			result[1] = 'I';
+			break;
+
+		case message_type::warning:
+			result[1] = 'W';
+			break;
+
+		case message_type::error:
+			result[1] = 'E';
+			break;
+
+		default:
+			throw std::runtime_error("The result of the method 'dlink::message::type(void) const noexcept' isn't valid.");
+		}
+
+		result += std::to_string(id_);
+
+		if (result.size() != 6)
+		{
+			result.insert(result.begin() + 2, '0');
+		}
+
+		return result + std::to_string(id_);
+	}
+
 	std::uint16_t message::id() const noexcept
 	{
 		return id_;
