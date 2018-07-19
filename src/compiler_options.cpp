@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <ios>
 #include <iostream>
 #include <stdexcept>
 
@@ -10,6 +11,32 @@
 
 namespace dlink
 {
+	compiler_options::compiler_options(const compiler_options& options)
+		: help_(options.help_), version_(options.version_),
+#ifdef DLINK_MULTITHREADING
+		count_of_threads_(options.count_of_threads_),
+#endif
+		input_files_(options.input_files_), output_file_(options.output_file_),
+		input_encoding_(options.input_encoding_)
+	{
+	}
+
+	compiler_options& compiler_options::operator=(const compiler_options& options)
+	{
+		help_ = options.help_;
+		version_ = options.version_;
+
+#ifdef DLINK_MULTITHREADING
+		count_of_threads_ = options.count_of_threads_;
+#endif
+		input_files_ = options.input_files_;
+		output_file_ = options.output_file_;
+
+		input_encoding_ = options.input_encoding_;
+
+		return *this;
+	}
+
 	void compiler_options::clear()
 	{
 		help_ = false;
@@ -95,11 +122,11 @@ namespace dlink
 
 namespace dlink
 {
-	bool parse_command_line(int argc, char** argv, compiler_options& option)
+	bool parse_command_line(int argc, char** argv, compiler_options& options)
 	{
-		return parse_command_line(std::cout, argc, argv, option);
+		return parse_command_line(std::cout, argc, argv, options);
 	}
-	bool parse_command_line(std::ostream& stream, int argc, char** argv, compiler_options& option)
+	bool parse_command_line(std::ostream& stream, int argc, char** argv, compiler_options& options)
 	{
 		if (argc < 2)
 		{
@@ -109,7 +136,7 @@ namespace dlink
 		}
 
 		namespace po = boost::program_options;
-		option.clear();
+		options.clear();
 
 		po::options_description generic;
 		generic.add_options()
@@ -153,11 +180,11 @@ namespace dlink
 			// Generic
 			if (map.count("help"))
 			{
-				option.help(true);
+				options.help(true);
 			}
 			if (map.count("version"))
 			{
-				option.version(true);
+				options.version(true);
 			}
 
 			// Config
@@ -167,12 +194,12 @@ namespace dlink
 				const std::int32_t count =
 					std::clamp(map["job"].as<std::int32_t>(), 0, compiler_options::max_count_of_threads);
 
-				option.count_of_threads(count);
+				options.count_of_threads(count);
 			}
 #endif
 			if (map.count("output"))
 			{
-				option.output_file(map["output"].as<std::string>());
+				options.output_file(map["output"].as<std::string>());
 			}
 			if (map.count("input-file"))
 			{
@@ -180,7 +207,7 @@ namespace dlink
 				
 				for (const std::string& file : files)
 				{
-					option.add_input(file);
+					options.add_input(file);
 				}
 			}
 
@@ -193,25 +220,25 @@ namespace dlink
 
 				if (encoding == "utf8" || encoding == "utf-8" || encoding == "u8")
 				{
-					option.input_encoding(encoding_type::utf8);
+					options.input_encoding(encoding_type::utf8);
 				}
 				else if (encoding == "utf16" || encoding == "utf-16" || encoding == "u16" ||
 						 encoding == "utf16le" || encoding == "utf-16le" || encoding == "u16le")
 				{
-					option.input_encoding(encoding_type::utf16);
+					options.input_encoding(encoding_type::utf16);
 				}
 				else if (encoding == "utf16be" || encoding == "utf-16be" || encoding == "u16be")
 				{
-					option.input_encoding(encoding_type::utf16be);
+					options.input_encoding(encoding_type::utf16be);
 				}
 				else if (encoding == "utf32" || encoding == "utf-32" || encoding == "u32" ||
 					encoding == "utf32le" || encoding == "utf-32le" || encoding == "u32le")
 				{
-					option.input_encoding(encoding_type::utf32);
+					options.input_encoding(encoding_type::utf32);
 				}
 				else if (encoding == "utf32be" || encoding == "utf-32be" || encoding == "u32be")
 				{
-					option.input_encoding(encoding_type::utf32be);
+					options.input_encoding(encoding_type::utf32be);
 				}
 				else
 				{
@@ -223,14 +250,14 @@ namespace dlink
 			// Run
 			//
 			// Generic
-			if (option.help())
+			if (options.help())
 			{
 				stream << "Usage: " << argv[0] << " [options...] files...\n";
 				stream << visible << '\n';
 
 				return false;
 			}
-			else if (option.version())
+			else if (options.version())
 			{
 				stream << "Dlink Official Compiler " << program::version << '\n'
 					   << "(C) 2018. kmc7468 All rights reserved.\n\n"
@@ -242,20 +269,20 @@ namespace dlink
 			}
 
 			// Config
-			if (option.input_files().size() != 0)
+			if (options.input_files().size() != 0)
 			{
 				const std::vector<std::string>::const_iterator duplicate_iter =
-					std::unique(const_cast<std::vector<std::string>&>(option.input_files()).begin(),
-								const_cast<std::vector<std::string>&>(option.input_files()).end());
+					std::unique(const_cast<std::vector<std::string>&>(options.input_files()).begin(),
+								const_cast<std::vector<std::string>&>(options.input_files()).end());
 
-				if (duplicate_iter != option.input_files().end())
+				if (duplicate_iter != options.input_files().end())
 				{
 					stream << "Error: duplicate input files('" << *duplicate_iter << "').\n\n";
 
 					return false;
 				}
 			}
-			else if (option.input_files().size() == 0)
+			else if (options.input_files().size() == 0)
 			{
 				stream << "Error: no input files.\n\n";
 
@@ -286,14 +313,22 @@ namespace dlink
 
 				return false;
 			}
-			else if (option.input_encoding() == encoding_type::none)
+			else if (options.input_encoding() == encoding_type::none)
 			{
-				std::ifstream input_stream(option.input_files()[0]);
+				std::ifstream input_stream(options.input_files()[0], std::ios::binary);
+
+				if (!input_stream.is_open())
+				{
+					stream << "Error: failed to open the input.\n\n";
+
+					return false;
+				}
+
 				encoding_type encoding = encoding::detect_encoding(input_stream);
 
 				input_stream.close();
 
-				option.input_encoding(
+				options.input_encoding(
 					encoding == encoding_type::none ? encoding_type::utf8 : encoding);
 			}
 

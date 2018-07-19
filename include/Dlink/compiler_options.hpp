@@ -28,12 +28,12 @@ namespace dlink
 	{
 	public:
 		compiler_options() = default;
-		compiler_options(const compiler_options& options) = delete;
+		compiler_options(const compiler_options& options);
 		compiler_options(compiler_options&& options) noexcept = delete;
 		~compiler_options() = default;
 
 	public:
-		compiler_options& operator=(const compiler_options& options) = delete;
+		compiler_options& operator=(const compiler_options& options);
 		compiler_options& operator=(compiler_options&& options) noexcept = delete;
 		bool operator==(const compiler_options& options) const = delete;
 		bool operator!=(const compiler_options& options) const = delete;
@@ -77,8 +77,8 @@ namespace dlink
 		static constexpr std::int32_t max_count_of_threads = 128;
 	};
 
-	bool parse_command_line(int argc, char** argv, compiler_options& option);
-	bool parse_command_line(std::ostream& stream, int argc, char** argv, compiler_options& option);
+	bool parse_command_line(int argc, char** argv, compiler_options& options);
+	bool parse_command_line(std::ostream& stream, int argc, char** argv, compiler_options& options);
 }
 
 #endif
