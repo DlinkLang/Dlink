@@ -18,8 +18,7 @@ namespace dlink
 #endif
 		input_files_(options.input_files_), output_file_(options.output_file_),
 		input_encoding_(options.input_encoding_)
-	{
-	}
+	{}
 
 	compiler_options& compiler_options::operator=(const compiler_options& options)
 	{
@@ -189,10 +188,10 @@ namespace dlink
 
 			// Config
 #ifdef DLINK_MULTITHREADING
-			if (map.count("job"))
+			if (map.count("jobs"))
 			{
 				const std::int32_t count =
-					std::clamp(map["job"].as<std::int32_t>(), 0, compiler_options::max_count_of_threads);
+					std::clamp(map["jobs"].as<std::int32_t>(), 0, compiler_options::max_count_of_threads);
 
 				options.count_of_threads(count);
 			}
@@ -324,8 +323,7 @@ namespace dlink
 					return false;
 				}
 
-				encoding_type encoding = encoding::detect_encoding(input_stream);
-
+				const encoding_type encoding = detect_encoding(input_stream);
 				input_stream.close();
 
 				options.input_encoding(
