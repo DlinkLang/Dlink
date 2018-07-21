@@ -58,8 +58,8 @@ namespace dlink
 		const std::string& output_file() const noexcept;
 		void output_file(const std::string_view& new_output_file);
 
-		encoding_type input_encoding() const noexcept;
-		void input_encoding(encoding_type new_encoding_type) noexcept;
+		encoding input_encoding() const noexcept;
+		void input_encoding(encoding new_encoding_type) noexcept;
 
 	private:
 		bool help_ = false;
@@ -71,7 +71,7 @@ namespace dlink
 		std::vector<std::string> input_files_;
 		std::string output_file_;
 
-		encoding_type input_encoding_ = encoding_type::none;
+		encoding input_encoding_ = encoding::none;
 
 	public:
 		static constexpr std::int32_t max_count_of_threads = 128;

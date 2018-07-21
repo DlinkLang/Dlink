@@ -47,7 +47,7 @@ namespace dlink
 		input_files_.clear();
 		output_file_.clear();
 
-		input_encoding_ = encoding_type::none;
+		input_encoding_ = encoding::none;
 	}
 
 	void compiler_options::add_input(const std::string& string)
@@ -109,11 +109,11 @@ namespace dlink
 		output_file_ = new_output_file;
 	}
 
-	encoding_type compiler_options::input_encoding() const noexcept
+	encoding compiler_options::input_encoding() const noexcept
 	{
 		return input_encoding_;
 	}
-	void compiler_options::input_encoding(encoding_type new_encoding_type) noexcept
+	void compiler_options::input_encoding(encoding new_encoding_type) noexcept
 	{
 		input_encoding_ = new_encoding_type;
 	}
@@ -219,25 +219,25 @@ namespace dlink
 
 				if (encoding == "utf8" || encoding == "utf-8" || encoding == "u8")
 				{
-					options.input_encoding(encoding_type::utf8);
+					options.input_encoding(encoding::utf8);
 				}
 				else if (encoding == "utf16" || encoding == "utf-16" || encoding == "u16" ||
 						 encoding == "utf16le" || encoding == "utf-16le" || encoding == "u16le")
 				{
-					options.input_encoding(encoding_type::utf16);
+					options.input_encoding(encoding::utf16);
 				}
 				else if (encoding == "utf16be" || encoding == "utf-16be" || encoding == "u16be")
 				{
-					options.input_encoding(encoding_type::utf16be);
+					options.input_encoding(encoding::utf16be);
 				}
 				else if (encoding == "utf32" || encoding == "utf-32" || encoding == "u32" ||
 					encoding == "utf32le" || encoding == "utf-32le" || encoding == "u32le")
 				{
-					options.input_encoding(encoding_type::utf32);
+					options.input_encoding(encoding::utf32);
 				}
 				else if (encoding == "utf32be" || encoding == "utf-32be" || encoding == "u32be")
 				{
-					options.input_encoding(encoding_type::utf32be);
+					options.input_encoding(encoding::utf32be);
 				}
 				else
 				{
@@ -311,23 +311,6 @@ namespace dlink
 				}
 
 				return false;
-			}
-			else if (options.input_encoding() == encoding_type::none)
-			{
-				std::ifstream input_stream(options.input_files()[0], std::ios::binary);
-
-				if (!input_stream.is_open())
-				{
-					stream << "Error: failed to open the input.\n\n";
-
-					return false;
-				}
-
-				const encoding_type encoding = detect_encoding(input_stream);
-				input_stream.close();
-
-				options.input_encoding(
-					encoding == encoding_type::none ? encoding_type::utf8 : encoding);
 			}
 
 			return true;
