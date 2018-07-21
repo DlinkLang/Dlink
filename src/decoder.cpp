@@ -51,6 +51,11 @@ namespace dlink
 			remainder = options_.input_files().size() % count_of_threads;
 		}
 
+		{
+			std::lock_guard<std::mutex> guard_(mutex_);
+			results_.resize(options_.input_files().size());
+		}
+
 		std::vector<std::future<bool>> futures;
 
 		for (std::size_t i = 0; i < count_of_threads - 1; ++i)
@@ -81,6 +86,14 @@ namespace dlink
 	bool decoder::decode_singlethread()
 	{
 		clear();
+
+#ifdef DLINK_MULTITHREADING
+		{
+			std::lock_guard<std::mutex> guard_(mutex_);
+			results_.resize(options_.input_files().size());
+		}
+#endif
+
 		decode_(0, options_.input_files().size());
 
 		return true;
@@ -297,12 +310,17 @@ namespace dlink
 
 #ifdef DLINK_MULTITHREADING
 		std::lock_guard<std::mutex> guard_(mutex_);
-#endif
 
+		for (std::size_t i = begin; i < end; ++i)
+		{
+			results_[i] = std::move(results[i - begin]);
+		}
+#else
 		for (std::size_t i = 0; i < results.size(); ++i)
 		{
 			results_.push_back(std::move(results[i]));
 		}
+#endif
 
 		return true;
 	}
