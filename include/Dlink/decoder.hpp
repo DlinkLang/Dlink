@@ -32,6 +32,9 @@ namespace dlink
 		bool decode();
 		bool decode_singlethread();
 
+	private:
+		bool decode_(std::size_t begin, std::size_t end);
+
 	public:
 		const compiler_options& options() const noexcept;
 

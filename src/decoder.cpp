@@ -7,6 +7,10 @@
 #include <fstream>
 #include <iterator>
 
+#ifdef DLINK_MULTITHREADING
+#	include <future>
+#endif
+
 #include <Dlink/extlib/utf8.h>
 
 namespace dlink
@@ -27,8 +31,49 @@ namespace dlink
 	bool decoder::decode()
 	{
 #ifdef DLINK_MULTITHREADING
-		// TODO
-		return true;
+		std::size_t count_of_threads = options_.count_of_threads();
+		
+		if (count_of_threads == 0)
+		{
+			count_of_threads = 8;
+		}
+
+		count_of_threads = std::min(count_of_threads, options_.input_files().size());
+
+		std::size_t average = options_.input_files().size() / count_of_threads;
+		std::size_t remainder = options_.input_files().size() % count_of_threads;
+
+		if (average < 4)
+		{
+			count_of_threads = options_.input_files().size() / 4;
+
+			average = options_.input_files().size() / count_of_threads;
+			remainder = options_.input_files().size() % count_of_threads;
+		}
+
+		std::vector<std::future<bool>> futures;
+
+		for (std::size_t i = 0; i < count_of_threads - 1; ++i)
+		{
+			futures.push_back(std::move(
+				std::async(&decoder::decode_, this, i * average, (i + 1) * average)
+			));
+		}
+
+		futures.push_back(std::move(
+			std::async(&decoder::decode_, this, futures.size() * average, (futures.size() + 1) * average + remainder)
+		));
+
+		bool result = true;
+
+		for (std::future<bool>& future : futures)
+		{
+			future.wait();
+
+			result = result && future.get();
+		}
+
+		return result;
 #else
 		return decode_singlethread();
 #endif
@@ -36,22 +81,32 @@ namespace dlink
 	bool decoder::decode_singlethread()
 	{
 		clear();
+		decode_(0, options_.input_files().size());
 
-#ifdef DLINK_MULTITHREADING
-		std::lock_guard<std::mutex> guard(mutex_);
-#endif
+		return true;
+	}
 
-		for (const std::string& path : options_.input_files())
+	bool decoder::decode_(std::size_t begin, std::size_t end)
+	{
+		std::vector<std::string> results;
+
+		for (std::size_t i = begin; i < end; ++i)
 		{
 			using namespace std::literals::string_literals;
 
+			const std::string& path = options_.input_files()[i];
 			std::ifstream stream(path);
 
 			if (!stream.is_open())
 			{
+#ifdef DLINK_MULTITHREADING
+				std::lock_guard<std::mutex> guard_(mutex_);
+#endif
+
 				messages_.push_back(std::make_shared<error_message>(
 					1000, "Failed to open the input.", path
 					));
+
 				return false;
 			}
 
@@ -60,6 +115,10 @@ namespace dlink
 			if (options_.input_encoding() != encoding::none &&
 				options_.input_encoding() != detected_encoding)
 			{
+#ifdef DLINK_MULTITHREADING
+				std::lock_guard<std::mutex> guard_(mutex_);
+#endif
+
 				messages_.push_back(std::make_shared<error_message>(
 					1002, "The input isn't encoded in '"s + to_string(options_.input_encoding()).data() + "'.", path
 					));
@@ -85,6 +144,10 @@ namespace dlink
 
 				if (invalid_iter != str.end())
 				{
+#ifdef DLINK_MULTITHREADING
+					std::lock_guard<std::mutex> guard_(mutex_);
+#endif
+
 					messages_.push_back(std::make_shared<error_message>(
 						1001, "Failed to decode the input using '"s + to_string(detected_encoding).data() + "'.", path
 						));
@@ -92,7 +155,7 @@ namespace dlink
 					return false;
 				}
 
-				results_.push_back(std::move(str));
+				results.push_back(std::move(str));
 				break;
 			}
 
@@ -100,6 +163,10 @@ namespace dlink
 			{
 				if (length % 2 != 0)
 				{
+#ifdef DLINK_MULTITHREADING
+					std::lock_guard<std::mutex> guard_(mutex_);
+#endif
+
 					messages_.push_back(std::make_shared<error_message>(
 						1001, "Failed to decode the input using '"s + to_string(detected_encoding).data() + "'.", path
 						));
@@ -116,12 +183,12 @@ namespace dlink
 					{
 						return static_cast<char16_t>(((c & 0xFF) << 8) + ((c & 0xFF00) >> 8));
 					});
-				}				
+				}
 
 				std::string utf8;
 				utf8::utf16to8(temp.begin(), temp.end(), std::back_inserter(utf8));
 
-				results_.push_back(std::move(utf8));
+				results.push_back(std::move(utf8));
 				break;
 			}
 
@@ -129,6 +196,10 @@ namespace dlink
 			{
 				if (length % 2 != 0)
 				{
+#ifdef DLINK_MULTITHREADING
+					std::lock_guard<std::mutex> guard_(mutex_);
+#endif
+
 					messages_.push_back(std::make_shared<error_message>(
 						1001, "Failed to decode the input using '"s + to_string(detected_encoding).data() + "'.", path
 						));
@@ -150,14 +221,18 @@ namespace dlink
 				std::string utf8;
 				utf8::utf16to8(temp.begin(), temp.end(), std::back_inserter(utf8));
 
-				results_.push_back(std::move(utf8));
+				results.push_back(std::move(utf8));
 				break;
 			}
-			
+
 			case encoding::utf32:
 			{
 				if (length % 4 != 0)
 				{
+#ifdef DLINK_MULTITHREADING
+					std::lock_guard<std::mutex> guard_(mutex_);
+#endif
+
 					messages_.push_back(std::make_shared<error_message>(
 						1001, "Failed to decode the input using '"s + to_string(detected_encoding).data() + "'.", path
 						));
@@ -179,14 +254,18 @@ namespace dlink
 				std::string utf8;
 				utf8::utf32to8(temp.begin(), temp.end(), std::back_inserter(utf8));
 
-				results_.push_back(std::move(utf8));
+				results.push_back(std::move(utf8));
 				break;
 			}
-			
+
 			case encoding::utf32be:
 			{
 				if (length % 4 != 0)
 				{
+#ifdef DLINK_MULTITHREADING
+					std::lock_guard<std::mutex> guard_(mutex_);
+#endif
+
 					messages_.push_back(std::make_shared<error_message>(
 						1001, "Failed to decode the input using '"s + to_string(detected_encoding).data() + "'.", path
 						));
@@ -208,12 +287,21 @@ namespace dlink
 				std::string utf8;
 				utf8::utf32to8(temp.begin(), temp.end(), std::back_inserter(utf8));
 
-				results_.push_back(std::move(utf8));
+				results.push_back(std::move(utf8));
 				break;
 			}
 			}
 
 			stream.close();
+		}
+
+#ifdef DLINK_MULTITHREADING
+		std::lock_guard<std::mutex> guard_(mutex_);
+#endif
+
+		for (std::size_t i = 0; i < results.size(); ++i)
+		{
+			results_.push_back(std::move(results[i]));
 		}
 
 		return true;
