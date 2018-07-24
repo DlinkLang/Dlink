@@ -24,9 +24,6 @@ namespace dlink
 	class message
 	{
 	public:
-		using ptr = std::shared_ptr<message>;
-
-	public:
 		message(std::uint16_t id, const std::string_view& what);
 		message(std::uint16_t id, const std::string_view& what, const std::string_view& where);
 		message(std::uint16_t id, const std::string_view& what, const std::string_view& where,
@@ -60,7 +57,7 @@ namespace dlink
 		std::string where_;
 	};
 
-	using message_ptr = message::ptr;
+	using message_ptr = std::shared_ptr<message>;
 
 	class info_message final : public message
 	{
@@ -196,6 +193,8 @@ namespace dlink
 		mutable std::mutex mutex_;
 #endif
 	};
+
+	using messages_ptr = std::shared_ptr<messages>;
 }
 
 #endif
