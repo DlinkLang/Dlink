@@ -2,9 +2,15 @@
 #define DLINK_HEADER_MESSAGE_HPP
 
 #include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
+
+#ifdef DLINK_MULTITHREADING
+#	include <mutex>
+#endif
 
 namespace dlink
 {
@@ -17,9 +23,6 @@ namespace dlink
 
 	class message
 	{
-	public:
-		using ptr = std::shared_ptr<message>;
-
 	public:
 		message(std::uint16_t id, const std::string_view& what);
 		message(std::uint16_t id, const std::string_view& what, const std::string_view& where);
@@ -54,7 +57,7 @@ namespace dlink
 		std::string where_;
 	};
 
-	using message_ptr = message::ptr;
+	using message_ptr = std::shared_ptr<message>;
 
 	class info_message final : public message
 	{
@@ -118,6 +121,80 @@ namespace dlink
 	public:
 		virtual message_type type() const noexcept override;
 	};
+
+	class messages final
+	{
+	public:
+		using iterator = std::vector<message_ptr>::iterator;
+		using const_iterator = std::vector<message_ptr>::const_iterator;
+		using reverse_iterator = std::vector<message_ptr>::reverse_iterator;
+		using const_reverse_iterator = std::vector<message_ptr>::const_reverse_iterator;
+
+	public:
+		messages() = default;
+		messages(const messages& messages) = delete;
+		messages(messages&& messages) noexcept = delete;
+		~messages() = default;
+
+	public:
+		messages& operator=(const messages& messages) = delete;
+		messages& operator=(messages&& messages) noexcept = delete;
+		bool operator==(const messages& messages) const = delete;
+		bool operator!=(const messages& messages) const = delete;
+		const message_ptr& operator[](std::size_t index) const;
+		message_ptr& operator[](std::size_t index);
+
+	public:
+		const message_ptr& at(std::size_t index) const;
+		message_ptr& at(std::size_t index);
+		const_iterator begin() const noexcept;
+		iterator begin() noexcept;
+		const_iterator cbegin() const noexcept;
+		const_iterator end() const noexcept;
+		iterator end() noexcept;
+		const_iterator cend() const noexcept;
+		const_reverse_iterator rbegin() const noexcept;
+		reverse_iterator rbegin() noexcept;
+		const_reverse_iterator crbegin() const noexcept;
+		const_reverse_iterator rend() const noexcept;
+		reverse_iterator rend() noexcept;
+		const_reverse_iterator crend() const noexcept;
+
+		bool empty() const noexcept;
+		std::size_t size() const noexcept;
+		std::size_t capacity() const noexcept;
+		void resize(std::size_t count);
+		void resize(std::size_t count, const message_ptr& message);
+		void shrink_to_fit();
+		void reserve(std::size_t new_capacity);
+		void clear() noexcept;
+
+		void push_back(const message_ptr& message);
+		void push_back(message_ptr&& message);
+		void pop_back();
+		iterator insert(const_iterator iterator, const message_ptr& message);
+		iterator insert(const_iterator iterator, message_ptr&& message);
+		iterator insert(const_iterator iterator, std::size_t count, const message_ptr& message);
+		iterator insert(const_iterator iterator, std::initializer_list<message_ptr> list);
+		iterator erase(const_iterator iterator);
+		iterator erase(const_iterator first, const_iterator last);
+
+		bool has_error() const;
+		bool has_warning() const;
+		bool has_info() const;
+
+	public:
+		const std::vector<message_ptr>& data() const noexcept;
+		std::vector<message_ptr>& data() noexcept;
+
+	private:
+		std::vector<message_ptr> messages_;
+#ifdef DLINK_MULTITHREADING
+		mutable std::mutex mutex_;
+#endif
+	};
+
+	using messages_ptr = std::shared_ptr<messages>;
 }
 
 #endif

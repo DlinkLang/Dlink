@@ -1,22 +1,22 @@
 #ifndef DLINK_HEADER_DECODER_HPP
 #define DLINK_HEADER_DECODER_HPP
 
-#include <Dlink/compiler_options.hpp>
-#include <Dlink/message.hpp>
+#include <Dlink/compiler_metadata.hpp>
+#include <Dlink/source.hpp>
+#include <Dlink/system.hpp>
 
+#include <cstdio>
+#include <fstream>
 #include <string>
+#include <utility>
 #include <vector>
-
-#ifdef DLINK_MULTITHREADING
-#	include <mutex>
-#endif
 
 namespace dlink
 {
 	class decoder final
 	{
 	public:
-		decoder(const compiler_options& options);
+		decoder() = delete;
 		decoder(const decoder& decoder) = delete;
 		decoder(decoder&& decoder) noexcept = delete;
 		~decoder() = default;
@@ -28,27 +28,17 @@ namespace dlink
 		bool operator!=(const decoder& decoder) const = delete;
 
 	public:
-		void clear();
-		bool decode();
-		bool decode_singlethread();
+		static bool decode(compiler_metadata& metadata, std::vector<source>& results);
+		static std::pair<bool, std::vector<source>> decode(compiler_metadata& metadata);
+		static bool decode_singlethread(compiler_metadata& metadata, std::vector<source>& results);
+		static std::pair<bool, std::vector<source>> decode_singlethread(compiler_metadata& metadata);
+		static bool decode_source(source& source, compiler_metadata& metadata);
 
 	private:
-		bool decode_(std::size_t begin, std::size_t end);
-
-	public:
-		const compiler_options& options() const noexcept;
-
-		const std::vector<message_ptr>& messages() const noexcept;
-		const std::vector<std::string>& results() const noexcept;
-		
-	private:
-		compiler_options options_;
-#ifdef DLINK_MULTITHREADING
-		std::mutex mutex_;
-#endif
-		
-		std::vector<message_ptr> messages_;
-		std::vector<std::string> results_;
+		static bool decode_utf16_(const endian encoding_endian, const std::fpos_t length, const encoding detected_encoding,
+								  std::ifstream& stream, source& source, compiler_metadata& metadata);
+		static bool decode_utf32_(const endian encoding_endian, const std::fpos_t length, const encoding detected_encoding,
+								  std::ifstream& stream, source& source, compiler_metadata& metadata);
 	};
 }
 

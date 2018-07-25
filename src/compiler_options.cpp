@@ -6,6 +6,7 @@
 #include <ios>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 
 #include <boost/program_options.hpp>
 
@@ -19,6 +20,16 @@ namespace dlink
 		input_files_(options.input_files_), output_file_(options.output_file_),
 		input_encoding_(options.input_encoding_)
 	{}
+	compiler_options::compiler_options(compiler_options&& options) noexcept
+		: help_(options.help_), version_(options.version_),
+#ifdef DLINK_MULTITHREADING
+		count_of_threads_(options.count_of_threads_),
+#endif
+		input_files_(std::move(options.input_files_)), output_file_(std::move(options.output_file_)),
+		input_encoding_(std::move(options.input_encoding_))
+	{
+		options.moved_();
+	}
 
 	compiler_options& compiler_options::operator=(const compiler_options& options)
 	{
@@ -35,19 +46,32 @@ namespace dlink
 
 		return *this;
 	}
-
-	void compiler_options::clear()
+	compiler_options& compiler_options::operator=(compiler_options&& options) noexcept
 	{
-		help_ = false;
-		version_ = false;
+		help_ = options.help_;
+		version_ = options.version_;
 
 #ifdef DLINK_MULTITHREADING
-		count_of_threads_ = 0;
+		count_of_threads_ = options.count_of_threads_;
 #endif
+		input_files_ = std::move(options.input_files_);
+		output_file_ = std::move(options.output_file_);
+
+		input_encoding_ = std::move(options.input_encoding_);
+
+		options.moved_();
+
+		return *this;
+	}
+
+	void compiler_options::clear() noexcept
+	{
 		input_files_.clear();
 		output_file_.clear();
 
 		input_encoding_ = encoding::none;
+
+		moved_();
 	}
 
 	void compiler_options::add_input(const std::string& string)
@@ -61,6 +85,16 @@ namespace dlink
 
 		if (iter == input_files_.end())
 			throw std::invalid_argument("Failed to remove the argument 'string'.");
+	}
+
+	void compiler_options::moved_() noexcept
+	{
+		help_ = false;
+		version_ = false;
+
+#ifdef DLINK_MULTITHREADING
+		count_of_threads_ = 0;
+#endif
 	}
 
 	bool compiler_options::help() const noexcept

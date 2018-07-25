@@ -29,20 +29,23 @@ namespace dlink
 	public:
 		compiler_options() = default;
 		compiler_options(const compiler_options& options);
-		compiler_options(compiler_options&& options) noexcept = delete;
+		compiler_options(compiler_options&& options) noexcept;
 		~compiler_options() = default;
 
 	public:
 		compiler_options& operator=(const compiler_options& options);
-		compiler_options& operator=(compiler_options&& options) noexcept = delete;
+		compiler_options& operator=(compiler_options&& options) noexcept;
 		bool operator==(const compiler_options& options) const = delete;
 		bool operator!=(const compiler_options& options) const = delete;
 		
 	public:
-		void clear();
+		void clear() noexcept;
 
 		void add_input(const std::string& string);
 		void remove_input(const std::string& string);
+
+	private:
+		void moved_() noexcept;
 
 	public:
 		bool help() const noexcept;
