@@ -1,10 +1,14 @@
 #ifndef DLINK_HEADER_SOURCE_HPP
 #define DLINK_HEADER_SOURCE_HPP
 
-#include <Dlink/message.hpp>
+#include <Dlink/compiler_metadata.hpp>
 
 #include <string>
 #include <string_view>
+
+#ifdef DLINK_MULTITHREADING
+#	include <mutex>
+#endif
 
 namespace dlink
 {
@@ -17,8 +21,10 @@ namespace dlink
 
 	class source final
 	{
+		friend class decoder;
+
 	public:
-		source(const std::string_view& path, const messages_ptr& messages);
+		source(const std::string_view& path);
 		source(const source& source) = delete;
 		source(source&& source) noexcept;
 		~source() = default;
@@ -30,21 +36,26 @@ namespace dlink
 		bool operator!=(const source& source) const = delete;
 
 	public:
+		bool empty() const noexcept;
 		source_state state() const noexcept;
+
+		bool decode(compiler_metadata& metadata);
 
 	public:
 		const std::string& codes() const noexcept;
 		const std::string& path() const noexcept;
-		
-		const messages_ptr& messages() const noexcept;
-		messages_ptr& messages() noexcept;
+
+	private:
+		void codes(std::string&& new_codes);
 
 	private:
 		std::string codes_;
 		std::string path_;
 		source_state state_;
 
-		messages_ptr messages_;
+#ifdef DLINK_MULTITHREADING
+		mutable std::mutex codes_mutex_;
+#endif
 	};
 }
 

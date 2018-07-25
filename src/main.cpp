@@ -1,5 +1,7 @@
+#include <Dlink/compiler_metadata.hpp>
 #include <Dlink/compiler_options.hpp>
 #include <Dlink/decoder.hpp>
+#include <Dlink/message.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -14,9 +16,9 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	// Test code
+	dlink::compiler_metadata metadata(options);
 
-	dlink::decoder dec(options);
+	// Test code
 
 	double avg_multi = 0.0;
 	double avg_single = 0.0;
@@ -27,12 +29,15 @@ int main(int argc, char** argv)
 	double min_single = 10000;
 
 	int C = 20000;
+	std::vector<dlink::source> results;
 
 	for (int i = 0; i < C; ++i)
 	{
+		results.clear();
+
 		auto a = std::chrono::system_clock::now();
 
-		dec.decode();
+		dlink::decoder::decode(metadata, results);
 
 		auto b = std::chrono::system_clock::now();
 		std::chrono::duration<double> c = b - a;
@@ -41,9 +46,11 @@ int main(int argc, char** argv)
 		max_multi = std::max(max_multi, c.count());
 		min_multi = std::min(min_multi, c.count());
 		
+		results.clear();
+
 		auto d = std::chrono::system_clock::now();
 
-		dec.decode_singlethread();
+		dlink::decoder::decode_singlethread(metadata, results);
 
 		auto e = std::chrono::system_clock::now();
 		std::chrono::duration<double> f = e - d;
