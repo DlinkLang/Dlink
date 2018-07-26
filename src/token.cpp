@@ -1,7 +1,6 @@
 #include <Dlink/token.hpp>
 
 #include <map>
-#include <string_view>
 #include <utility>
 
 namespace dlink
@@ -178,5 +177,71 @@ namespace dlink
 	std::string to_string(token_type type)
 	{
 		return token_map_.at(type).data();
+	}
+}
+
+namespace dlink
+{
+	token::token(const std::string_view& data, token_type type, std::size_t line, std::size_t col)
+		: data_(data), type_(type), line_(line), col_(col)
+	{}
+	token::token(const token& token)
+		: data_(token.data_), type_(token.type_), line_(token.line_), col_(token.col_)
+	{}
+
+	token& token::operator=(const token& token)
+	{
+		data_ = token.data_;
+		type_ = token.type_;
+		line_ = token.line_;
+		col_ = token.col_;
+
+		return *this;
+	}
+
+	void token::clear() noexcept
+	{
+		data_ = "";
+		type_ = token_type::none;
+		line_ = 0;
+		col_ = 0;
+	}
+	bool token::empty() const noexcept
+	{
+		return data_.empty() && type_ == token_type::none &&
+			line_ == 0 && col_ == 0;
+	}
+
+	std::size_t token::line() const noexcept
+	{
+		return line_;
+	}
+	void token::line(std::size_t new_line) noexcept
+	{
+		line_ = new_line;
+	}
+	std::size_t token::col() const noexcept
+	{
+		return col_;
+	}
+	void token::col(std::size_t new_col) noexcept
+	{
+		col_ = new_col;
+	}
+	token_type token::type() const noexcept
+	{
+		return type_;
+	}
+	void token::type(token_type new_type) noexcept
+	{
+		type_ = new_type;
+	}
+	const std::string_view& token::data() const noexcept
+	{
+		return data_;
+	}
+	void token::data(const std::string_view& new_data) noexcept
+	{
+		data_ = new_data;
 	}
 }

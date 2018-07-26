@@ -1,7 +1,9 @@
 #ifndef DLINK_HEADER_TOKEN_HPP
 #define DLINK_HEADER_TOKEN_HPP
 
+#include <cstddef>
 #include <string>
+#include <string_view>
 
 namespace dlink
 {
@@ -168,6 +170,42 @@ namespace dlink
 	};
 
 	std::string to_string(token_type type);
+
+	class token final
+	{
+	public:
+		token() = default;
+		token(const std::string_view& data, token_type type, std::size_t line, std::size_t col);
+		token(const token& token);
+		token(token&& token) noexcept = delete;
+		~token() = default;
+
+	public:
+		token& operator=(const token& token);
+		token& operator=(token&& token) noexcept = delete;
+		bool operator==(const token& token) const = delete;
+		bool operator!=(const token& token) const = delete;
+
+	public:
+		void clear() noexcept;
+		bool empty() const noexcept;
+
+	public:
+		std::size_t line() const noexcept;
+		void line(std::size_t new_line) noexcept;
+		std::size_t col() const noexcept;
+		void col(std::size_t new_col) noexcept;
+		token_type type() const noexcept;
+		void type(token_type new_type) noexcept;
+		const std::string_view& data() const noexcept;
+		void data(const std::string_view& new_data) noexcept;
+
+	private:
+		std::size_t line_ = 0;
+		std::size_t col_ = 0;
+		token_type type_ = token_type::none;
+		std::string_view data_;
+	};
 }
 
 #endif
