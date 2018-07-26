@@ -139,8 +139,6 @@ namespace dlink
 	}
 	bool decoder::decode_source(source& source, compiler_metadata& metadata)
 	{
-		using namespace std::string_literals;
-
 		std::ifstream stream(source.path());
 
 		if (!stream.is_open())
@@ -158,7 +156,7 @@ namespace dlink
 			metadata.options().input_encoding() != detected_encoding)
 		{
 			metadata.messages().push_back(std::make_shared<error_message>(
-				1002, "The input isn't encoded in '"s + to_string(metadata.options().input_encoding()).data() + "'.", source.path()
+				1002, "The input isn't encoded in '" + to_string(metadata.options().input_encoding()) + "'.", source.path()
 				));
 
 			return false;
@@ -197,7 +195,7 @@ namespace dlink
 			if (invalid_iter != str.end())
 			{
 				metadata.messages().push_back(std::make_shared<error_message>(
-					1001, "Failed to decode the input using '"s + to_string(detected_encoding).data() + "'.", source.path()
+					1001, "Failed to decode the input using '" + to_string(detected_encoding) + "'.", source.path()
 					));
 
 				return false;
@@ -212,12 +210,10 @@ namespace dlink
 	bool decoder::decode_utf16_(const endian encoding_endian, const std::fpos_t length, const encoding detected_encoding,
 								std::ifstream& stream, source& source, compiler_metadata& metadata)
 	{
-		using namespace std::string_literals;
-
 		if (length % 2 != 0)
 		{
 			metadata.messages().push_back(std::make_shared<error_message>(
-				1001, "Failed to decode the input using '"s + to_string(detected_encoding).data() + "'."
+				1001, "Failed to decode the input using '" + to_string(detected_encoding) + "'."
 				));
 
 			return false;
@@ -247,12 +243,10 @@ namespace dlink
 	bool decoder::decode_utf32_(const endian encoding_endian, const std::fpos_t length, const encoding detected_encoding,
 								std::ifstream& stream, source& source, compiler_metadata& metadata)
 	{
-		using namespace std::string_literals;
-
 		if (length % 4 != 0)
 		{
 			metadata.messages().push_back(std::make_shared<error_message>(
-				1001, "Failed to decode the input using '"s + to_string(detected_encoding).data() + "'."
+				1001, "Failed to decode the input using '" + to_string(detected_encoding) + "'."
 				));
 
 			return false;

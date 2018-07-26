@@ -17,29 +17,7 @@ namespace dlink
 		utf32be,
 	};
 
-	constexpr std::string_view to_string(dlink::encoding encoding) noexcept
-	{
-		switch (encoding)
-		{
-		case encoding::utf8:
-			return "UTF-8";
-
-		case encoding::utf16:
-			return "UTF-16";
-
-		case encoding::utf16be:
-			return "UTF-16BE";
-
-		case encoding::utf32:
-			return "UTF-32";
-
-		case encoding::utf32be:
-			return "UTF-32BE";
-
-		default:
-			return "";
-		}
-	}
+	std::string to_string(dlink::encoding encoding);
 	encoding detect_encoding(std::istream& stream);
 }
 
