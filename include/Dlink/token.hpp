@@ -167,6 +167,9 @@ namespace dlink
 		keyword_typeid,
 
 		keyword_static_assert,
+
+		keyword_true,
+		keyword_false,
 	};
 
 	std::string to_string(token_type type);

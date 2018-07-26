@@ -168,7 +168,10 @@ namespace dlink
 			MAP_TOKEN(keyword_is),
 			MAP_TOKEN(keyword_typeid),
 
-			MAP_TOKEN(keyword_static_assert)
+			MAP_TOKEN(keyword_static_assert),
+
+			MAP_TOKEN(keyword_true),
+			MAP_TOKEN(keyword_false),
 		};
 	}
 
