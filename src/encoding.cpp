@@ -68,4 +68,37 @@ namespace dlink
 		stream.seekg(-2, std::ios::cur);
 		return encoding::none;
 	}
+
+	std::string to_string(dlink::eol eol)
+	{
+		switch (eol)
+		{
+		case dlink::eol::lf:
+			return "LF";
+
+		case dlink::eol::ff:
+			return "FF";
+
+		case dlink::eol::cr:
+			return "CR";
+
+		case dlink::eol::crlf:
+			return "CR+LF";
+
+		case dlink::eol::nel:
+			return "NEL";
+
+		case dlink::eol::ls:
+			return "LS";
+
+		case dlink::eol::ps:
+			return "PS";
+
+		case dlink::eol::rs:
+			return "RS";
+
+		default:
+			return "";
+		}
+	}
 }

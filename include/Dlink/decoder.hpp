@@ -29,9 +29,7 @@ namespace dlink
 
 	public:
 		static bool decode(compiler_metadata& metadata, std::vector<source>& results);
-		static std::pair<bool, std::vector<source>> decode(compiler_metadata& metadata);
 		static bool decode_singlethread(compiler_metadata& metadata, std::vector<source>& results);
-		static std::pair<bool, std::vector<source>> decode_singlethread(compiler_metadata& metadata);
 		static bool decode_source(source& source, compiler_metadata& metadata);
 
 	private:

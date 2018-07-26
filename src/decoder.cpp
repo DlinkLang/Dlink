@@ -1,6 +1,7 @@
 #include <Dlink/decoder.hpp>
 
 #include <Dlink/encoding.hpp>
+#include <Dlink/exception.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -105,13 +106,6 @@ namespace dlink
 		return decode_singlethread(metadata, results);
 #endif
 	}
-	std::pair<bool, std::vector<source>> decoder::decode(compiler_metadata& metadata)
-	{
-		std::pair<bool, std::vector<source>> result;
-		result.first = decode(metadata, result.second);
-
-		return result;
-	}
 	bool decoder::decode_singlethread(compiler_metadata& metadata, std::vector<source>& results)
 	{
 		const std::size_t size = results.size();
@@ -130,15 +124,11 @@ namespace dlink
 
 		return true;
 	}
-	std::pair<bool, std::vector<source>> decoder::decode_singlethread(compiler_metadata& metadata)
-	{
-		std::pair<bool, std::vector<source>> result;
-		result.first = decode_singlethread(metadata, result.second);
-
-		return result;
-	}
 	bool decoder::decode_source(source& source, compiler_metadata& metadata)
 	{
+		if (source.state() != source_state::initialized)
+			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::initialized' when 'static bool dlink::decoder::decode_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
+
 		std::ifstream stream(source.path());
 
 		if (!stream.is_open())
