@@ -74,6 +74,9 @@ namespace dlink
 	public:
 		my_& operator=(const my_& other)
 		{
+			if (this == &other)
+				return *this;
+
 			std::lock_guard<std::mutex> guard(mutex_);
 			std::lock_guard<std::mutex> guard_other(other.mutex_);
 
@@ -81,8 +84,11 @@ namespace dlink
 
 			return *this;
 		}
-		my_& operator=(my_&& other) noexcept(data_ = std::move(other.data_))
+		my_& operator=(my_&& other) noexcept(noexcept(data_ = std::move(other.data_)))
 		{
+			if (this == &other)
+				return *this;
+
 			std::lock_guard<std::mutex> guard(mutex_);
 			std::lock_guard<std::mutex> guard_other(other.mutex_);
 
@@ -92,6 +98,9 @@ namespace dlink
 		}
 		my_& operator=(std::initializer_list<Ty_> init)
 		{
+			if (this == &other)
+				return *this;
+
 			std::lock_guard<std::mutex> guard(mutex_);
 
 			data_ = init;
@@ -100,6 +109,9 @@ namespace dlink
 		}
 		bool operator==(const my_& other) const
 		{
+			if (this == &other)
+				return true;
+
 			std::lock_guard<std::mutex> guard(mutex_);
 			std::lock_guard<std::mutex> guard_other(other.mutex_);
 
@@ -107,6 +119,9 @@ namespace dlink
 		}
 		bool operator!=(const my_& other) const
 		{
+			if (this == &other)
+				return false;
+
 			std::lock_guard<std::mutex> guard(mutex_);
 			std::lock_guard<std::mutex> guard_other(other.mutex_);
 
@@ -114,6 +129,9 @@ namespace dlink
 		}
 		bool operator>(const my_& other) const
 		{
+			if (this == &other)
+				return false;
+
 			std::lock_guard<std::mutex> guard(mutex_);
 			std::lock_guard<std::mutex> guard_other(other.mutex_);
 
@@ -121,6 +139,9 @@ namespace dlink
 		}
 		bool operator>=(const my_& other) const
 		{
+			if (this == &other)
+				return true;
+
 			std::lock_guard<std::mutex> guard(mutex_);
 			std::lock_guard<std::mutex> guard_other(other.mutex_);
 
@@ -128,6 +149,9 @@ namespace dlink
 		}
 		bool operator<(const my_& other) const
 		{
+			if (this == &other)
+				return false;
+
 			std::lock_guard<std::mutex> guard(mutex_);
 			std::lock_guard<std::mutex> guard_other(other.mutex_);
 
@@ -135,6 +159,9 @@ namespace dlink
 		}
 		bool operator<=(const my_& other) const
 		{
+			if (this == &other)
+				return true;
+
 			std::lock_guard<std::mutex> guard(mutex_);
 			std::lock_guard<std::mutex> guard_other(other.mutex_);
 
@@ -437,6 +464,9 @@ namespace dlink
 
 		void swap(my_& other) noexcept(data_.swap(other.data_))
 		{
+			if (this == &other)
+				return;
+
 			std::lock_guard<std::mutex> guard(mutex_);
 			std::lock_guard<std::mutex> guard_other(other.mutex_);
 
@@ -469,6 +499,9 @@ namespace dlink
 	template<typename Ty_, typename Allocator_>
 	void swap(vector<Ty_, Allocator_>& lhs, vector<Ty_, Allocator_>& rhs)
 	{
+		if (&lhs == &rhs)
+			return;
+
 #ifdef DLINK_MULTITHREADING
 		std::lock_guard<std::mutex> guard(lhs.mutex_);
 		std::lock_guard<std::mutex> guard_other(rhs.mutex_);
