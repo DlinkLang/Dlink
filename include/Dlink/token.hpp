@@ -1,6 +1,8 @@
 #ifndef DLINK_HEADER_TOKEN_HPP
 #define DLINK_HEADER_TOKEN_HPP
 
+#include <Dlink/vector.hpp>
+
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -209,6 +211,8 @@ namespace dlink
 		token_type type_ = token_type::none;
 		std::string_view data_;
 	};
+
+	using tokens = vector<token>;
 }
 
 #endif

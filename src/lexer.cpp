@@ -1,5 +1,17 @@
 #include <Dlink/lexer.hpp>
 
+#include <Dlink/encoding.hpp>
+#include <Dlink/exception.hpp>
+
+#include <algorithm>
+#include <cstddef>
+#include <sstream>
+#include <string>
+#include <utility>
+
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/device/array.hpp>
+
 namespace dlink
 {
 #define MAP_KEYWORD(keyword) MAP_KEYWORD_INTERNAL(keyword, keyword_) 
@@ -90,4 +102,86 @@ namespace dlink
 	};
 #undef MAP_KEYWORD
 #undef MAP_KEYWORD_INTERNAL
+}
+
+namespace dlink
+{
+	namespace
+	{
+		bool getline(std::istream& stream, const char* org_string, std::string_view& output)
+		{
+			if (stream.eof())
+			{
+				output = "";
+				return false;
+			}
+
+			std::size_t length = 0;
+			const std::size_t pos = stream.tellg().seekpos();
+			
+			while (!is_eol(stream))
+			{
+				++length;
+				stream.seekg(1, std::ios::cur);
+			}
+
+			if (length == 0)
+			{
+				output = "";
+				return false;
+			}
+			else
+			{
+				output = std::string_view(org_string + pos, length);
+				return true;
+			}
+		}
+	}
+
+	bool lexer::lex(compiler_metadata& metadata, std::vector<source>& sources)
+	{
+		// TODO
+
+		return true;
+	}
+	bool lexer::lex_singlethread(compiler_metadata& metadata, std::vector<source>& sources)
+	{
+		bool result = true;
+
+		for (source& src : sources)
+		{
+			result = result && lex_source(src, metadata);
+		}
+
+		return result;
+	}
+	bool lexer::lex_source(source& source, compiler_metadata& metadata)
+	{
+		if (source.state() != source_state::decoded)
+			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::decoded' when 'static bool dlink::lexer::lex_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
+		
+		std::size_t line = 0;
+
+		boost::iostreams::stream<boost::iostreams::basic_array_source<char>> stream(
+			const_cast<char*>(source.codes().c_str()), source.codes().length()
+		);
+		std::string_view current_line;
+
+		bool inline_comment = false;
+		bool multiline_comment = false;
+
+		while (getline(stream, source.codes().c_str(), current_line))
+		{
+			++line;
+
+			for (std::size_t i = 0; i < current_line.size(); ++i)
+			{
+				char c = current_line[i];
+
+				// TODO
+			}
+		}
+
+		return true;
+	}
 }

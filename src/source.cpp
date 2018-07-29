@@ -2,6 +2,7 @@
 
 #include <Dlink/decoder.hpp>
 #include <Dlink/exception.hpp>
+#include <Dlink/lexer.hpp>
 
 #include <utility>
 
@@ -41,19 +42,26 @@ namespace dlink
 	{
 		return state() == source_state::empty;
 	}
-	source_state source::state() const noexcept
-	{
-		return state_;
-	}
 
 	bool source::decode(compiler_metadata& metadata)
 	{
-		if (empty())
-			throw invalid_state("The state shouldn't be empty when 'bool dlink::source::decode(void)' method is called.");
+		if (state() != source_state::initialized)
+			throw invalid_state("The state must be 'dlink::source_state::initialized' when 'bool dlink::source::decode(void)' method is called.");
 
 		return decoder::decode_source(*this, metadata);
 	}
+	bool source::lex(compiler_metadata& metadata)
+	{
+		if (state() != source_state::decoded)
+			throw invalid_state("The state must be 'dlink::source_state::decoded' when 'bool dlink::source::lex(void)' method is called.");
 
+		return lexer::lex_source(*this, metadata);
+	}
+
+	const std::string& source::path() const noexcept
+	{
+		return path_;
+	}
 	const std::string& source::codes() const noexcept
 	{
 #ifdef DLINK_MULTITHREADING
@@ -62,9 +70,18 @@ namespace dlink
 
 		return codes_;
 	}
-	const std::string& source::path() const noexcept
+	const dlink::tokens& source::tokens() const noexcept
 	{
-		return path_;
+#ifdef DLINK_MULTITHREADING
+		std::lock_guard<std::mutex> guard(tokens_mutex_);
+#endif
+
+		return tokens_;
+	}
+
+	source_state source::state() const noexcept
+	{
+		return state_;
 	}
 
 	void source::codes(std::string&& new_codes)
@@ -75,5 +92,14 @@ namespace dlink
 
 		codes_ = std::move(new_codes);
 		state_ = source_state::decoded;
+	}
+	void source::tokens(dlink::tokens&& new_tokens)
+	{
+#ifdef DLINK_MULTITHREADING
+		std::lock_guard<std::mutex> guard(tokens_mutex_);
+#endif
+
+		tokens_ = std::move(new_tokens);
+		state_ = source_state::lexed;
 	}
 }

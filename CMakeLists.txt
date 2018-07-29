@@ -11,7 +11,16 @@ set(SOURCE_DIR "./src")
 set(OUTPUT_DIR "./bin")
 
 set(MULTITHREADING ON CACHE BOOL "")
+set(LEAN_AND_MEAN OFF CACHE BOOL "")
+
 set(BOOST_DIRECTORY "" CACHE STRING "")
+set(BOOST_STATIC ON CACHE BOOL "")
+
+if(BOOST_STATIC)
+	set(Boost_USE_STATIC_LIBS ON)
+else(BOOST_STATIC)
+	set(Boost_USE_STATIC_LIBS OFF)
+endif(BOOST_STATIC)
 
 include_directories(${INCLUDE_DIR})
 file(GLOB SOURCE_LIST ${SOURCE_DIR}/*.cpp)
@@ -22,14 +31,17 @@ add_definitions(-D__STDC_CONSTANT_MACROS)
 add_definitions(-D__STDC_LIMIT_MACROS)
 
 set(BOOST_ROOT ${BOOST_DIRECTORY})
-find_package(Boost REQUIRED COMPONENTS program_options)
+find_package(Boost REQUIRED COMPONENTS iostreams program_options)
 include_directories(${Boost_INCLUDE_DIRS})
 
 if(MULTITHREADING)
 	add_definitions(-DDLINK_MULTITHREADING)
 endif(MULTITHREADING)
+if(LEAN_AND_MEAN)
+	add_definitions(-DDLINK_LEAN_AND_MEAN)
+endif(LEAN_AND_MEAN)
 
-add_library(${PROJECT_NAME} STATIC ${SOURCE_LIST})
+add_executable(${PROJECT_NAME} ${SOURCE_LIST})
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
