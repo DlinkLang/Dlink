@@ -14,7 +14,7 @@
 #	include <thread>
 #endif
 
-#include <Dlink/extlib/utf8.h>
+#include <Dlink/extlib/utf8/utf8.h>
 
 namespace dlink
 {
