@@ -172,6 +172,8 @@ namespace dlink
 		std::unique_ptr<memorystream> line_stream = nullptr;
 		std::string_view current_line;
 
+		dlink::tokens tokens;
+
 		bool multiline_comment = false;
 
 		while (getline(stream, source.codes().c_str(), current_line))
@@ -188,7 +190,7 @@ namespace dlink
 
 				if (std::isdigit(c))
 				{
-					std::string temp;
+					std::string temp = "0";
 					int base = 0;
 
 					if (c == '0' && i < length - 2)
@@ -201,6 +203,7 @@ namespace dlink
 						case 'B':
 						case 'b':
 						{
+							temp += next_c;
 							base = 2;
 
 							while (!is_whitespace(*line_stream))
@@ -222,52 +225,8 @@ namespace dlink
 									return false;
 								}
 							}
-						}
-						}
-					}
-				}
-			}
 
-			for (std::size_t i = 0; i < current_line.size(); ++i)
-			{
-				const char c = current_line[i];
-
-				if (std::isdigit(c))
-				{
-					std::string temp;
-					int base = 0;
-
-					if (c == '0' && i < current_line.length() - 2)
-					{
-						char next_c = current_line[i + 1];
-
-						switch (next_c)
-						{
-						case 'B':
-						case 'b':
-						{
-							base = 2;
-							i += 2;
-
-							do
-							{
-								const char next_c = current_line[i];
-
-								if (next_c == '0' || next_c == '1')
-								{
-									temp += next_c;
-								}
-								else if (next_c != '_')
-								{
-									metadata.messages().push_back(std::make_shared<error_message>(
-										2000, "", generate_line_col(source.path(), line, i + 1)
-										));
-
-									return false;
-								}
-
-								++i;
-							} while (i < current_line.length() && !is_whitespace(stream));
+							tokens.emplace_back(temp, token_type::integer_bin, line, i);
 						}
 						}
 					}
@@ -275,6 +234,7 @@ namespace dlink
 			}
 		}
 
+		source.tokens(std::move(tokens));
 		return true;
 	}
 }

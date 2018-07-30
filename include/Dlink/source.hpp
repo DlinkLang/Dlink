@@ -24,6 +24,7 @@ namespace dlink
 	class source final
 	{
 		friend class decoder;
+		friend class lexer;
 
 	public:
 		source(const std::string_view& path);
