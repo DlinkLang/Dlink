@@ -3,6 +3,7 @@
 
 #include <Dlink/vector.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -125,6 +126,11 @@ namespace dlink
 		bool has_warning() const;
 		bool has_info() const;
 	};
+
+	std::string to_string(const message_ptr& message);
+	std::string generate_line_col(const std::string_view& path, std::size_t line, std::size_t col);
+	std::string generate_source(const std::string_view& source, std::size_t line, std::size_t col, std::size_t length,
+								const std::string_view& message = "");
 }
 
 #endif

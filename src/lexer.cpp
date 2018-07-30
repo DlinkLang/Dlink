@@ -4,8 +4,9 @@
 #include <Dlink/exception.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <cstddef>
-#include <sstream>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -160,25 +161,117 @@ namespace dlink
 		if (source.state() != source_state::decoded)
 			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::decoded' when 'static bool dlink::lexer::lex_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
 		
+		using namespace std::string_literals;
+		using memorystream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
+
 		std::size_t line = 0;
 
-		boost::iostreams::stream<boost::iostreams::basic_array_source<char>> stream(
+		memorystream stream(
 			const_cast<char*>(source.codes().c_str()), source.codes().length()
 		);
+		std::unique_ptr<memorystream> line_stream = nullptr;
 		std::string_view current_line;
 
-		bool inline_comment = false;
 		bool multiline_comment = false;
 
 		while (getline(stream, source.codes().c_str(), current_line))
 		{
 			++line;
+			line_stream = std::make_unique<memorystream>(current_line.data(), current_line.size());
+
+			const std::fpos_t length = current_line.size();
+
+			while (!line_stream->eof())
+			{
+				const char c = static_cast<char>(line_stream->get());
+				const std::fpos_t i = line_stream->tellg().seekpos();
+
+				if (std::isdigit(c))
+				{
+					std::string temp;
+					int base = 0;
+
+					if (c == '0' && i < length - 2)
+					{
+						char next_c;
+						line_stream->read(&next_c, 1);
+
+						switch (next_c)
+						{
+						case 'B':
+						case 'b':
+						{
+							base = 2;
+
+							while (!is_whitespace(*line_stream))
+							{
+								line_stream->read(&next_c, 1);
+
+								if (next_c == '0' || next_c == '1')
+								{
+									temp += next_c;
+								}
+								else if (next_c != '_')
+								{
+									metadata.messages().push_back(std::make_shared<error_message>(
+										2000, "Invalid digit '"s + next_c + "' in binary literal.",
+										generate_line_col(source.path(), line, static_cast<std::size_t>(line_stream->tellg().seekpos())),
+										generate_source(current_line, line, static_cast<std::size_t>(line_stream->tellg().seekpos()), 1)
+										));
+
+									return false;
+								}
+							}
+						}
+						}
+					}
+				}
+			}
 
 			for (std::size_t i = 0; i < current_line.size(); ++i)
 			{
-				char c = current_line[i];
+				const char c = current_line[i];
 
-				// TODO
+				if (std::isdigit(c))
+				{
+					std::string temp;
+					int base = 0;
+
+					if (c == '0' && i < current_line.length() - 2)
+					{
+						char next_c = current_line[i + 1];
+
+						switch (next_c)
+						{
+						case 'B':
+						case 'b':
+						{
+							base = 2;
+							i += 2;
+
+							do
+							{
+								const char next_c = current_line[i];
+
+								if (next_c == '0' || next_c == '1')
+								{
+									temp += next_c;
+								}
+								else if (next_c != '_')
+								{
+									metadata.messages().push_back(std::make_shared<error_message>(
+										2000, "", generate_line_col(source.path(), line, i + 1)
+										));
+
+									return false;
+								}
+
+								++i;
+							} while (i < current_line.length() && !is_whitespace(stream));
+						}
+						}
+					}
+				}
 			}
 		}
 

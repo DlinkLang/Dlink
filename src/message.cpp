@@ -52,7 +52,7 @@ namespace dlink
 			result.insert(result.begin() + 2, '0');
 		}
 
-		return result + std::to_string(id_);
+		return result;
 	}
 
 	std::uint16_t message::id() const noexcept
@@ -188,5 +188,66 @@ namespace dlink
 		}
 
 		return false;
+	}
+}
+
+namespace dlink
+{
+	std::string to_string(const message_ptr& message)
+	{
+		std::string result;
+
+		switch (message->type())
+		{
+		case message_type::info:
+			result = "Info[";
+			break;
+
+		case message_type::warning:
+			result = "Warning[";
+			break;
+
+		case message_type::error:
+			result = "Error[";
+			break;
+
+		default:
+			break;
+		}
+
+		result += message->full_id() + "]: " + message->what();
+
+		if (!message->where().empty())
+		{
+			result += "\n --> " + message->where();
+		}
+		if (!message->additional_note().empty())
+		{
+			result += '\n' + message->additional_note();
+		}
+
+		return result;
+	}
+	std::string generate_line_col(const std::string_view& path, std::size_t line, std::size_t col)
+	{
+		return std::string(path.data()) + ':' + std::to_string(line) + ':' + std::to_string(col);
+	}
+	std::string generate_source(const std::string_view& source, std::size_t line, std::size_t col, std::size_t length,
+								const std::string_view& message)
+	{
+		const std::string line_string = std::to_string(line);
+		const std::string empty_line = std::string(line_string.size(), ' ') + " |";
+		std::string result = std::string(line_string.size(), ' ') + " |\n" +
+							 line_string + " | " + source.data() + '\n';
+
+		result += empty_line;
+		result += std::string(col, ' ') + std::string(length, '^');
+		
+		if (!message.empty())
+		{
+			result += message;
+		}
+
+		return result;
 	}
 }

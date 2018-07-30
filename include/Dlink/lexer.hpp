@@ -30,6 +30,9 @@ namespace dlink
 		static bool lex(compiler_metadata& metadata, std::vector<source>& sources);
 		static bool lex_singlethread(compiler_metadata& metadata, std::vector<source>& sources);
 		static bool lex_source(source& source, compiler_metadata& metadata);
+
+	private:
+
 	};
 }
 
