@@ -22,10 +22,13 @@ namespace dlink
 	std::string to_string(dlink::encoding encoding);
 	encoding detect_encoding(std::istream& stream);
 
+	int get_character_length(char first_byte);
+
 	enum class eol
 	{
 		lf,				// Line Feed,			0x0A
 #ifndef DLINK_LEAN_AND_MEAN
+		vt,				// Vertical Tab,		0x0B
 		ff,				// Form Feed,			0x0C
 #endif
 		cr,				// Carriage Return,		0x0D
@@ -43,6 +46,46 @@ namespace dlink
 	std::string_view get_eol_character(dlink::eol eol);
 	std::string to_string(dlink::eol eol);
 	bool is_eol(std::istream& stream);
+
+	enum class whitespace
+	{
+		tab,						// Character Tabulation,	0x09
+		line_feed,					//							0x0A,	EOL
+#ifndef DLINK_LEAN_AND_MEAN
+		line_tabulation,			//							0x0B,	EOL
+		form_feed,					//							0x0C,	EOL
+#endif
+		carriage_return,			//							0x0D,	EOL
+		carriage_return_line_feed,	// Carriage Return + Line Feed
+		space,						//							0x20
+#ifndef DLINK_LEAN_AND_MEAN
+		next_line,					//							0x85,	EOL
+		no_break_space,				//							0xA0
+		ogham_space_mark,			//							0x1680
+		en_quad,					//							0x2000
+		em_quad,					//							0x2001
+		en_space,					//							0x2002
+		em_space,					//							0x2003
+		three_per_em_space,			//							0x2004
+		four_per_em_space,			//							0x2005
+		six_per_em_space,			//							0x2006
+		figure_space,				//							0x2007
+		punctuation_space,			//							0x2008
+		thin_space,					//							0x2009
+		hair_space,					//							0x200A
+		line_separator,				//							0x2028,	EOL
+		paragraph_separator,		//							0x2029,	EOL
+		narrow_no_break_space,		//							0x202F
+		medium_mathematical_space,	//							0x205F
+#endif
+		ideographic_space,			//							0x3000
+	};
+
+	extern const std::map<std::string_view, whitespace> whitespaces;
+
+	std::string_view get_whitespace_character(dlink::whitespace whitespace);
+	std::string to_string(dlink::whitespace whitespace);
+	bool is_whitespace(std::istream& stream);
 }
 
 #endif
