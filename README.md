@@ -7,7 +7,6 @@
 ## 라이브러리 의존성
 이미 레포지토리에 포함되어 있으므로 설치를 위한 추가적인 작업이 필요하지 않습니다.
 - [UTF8-CPP](https://github.com/nemtrif/utfcpp): Version 2.3.5
-- [ThreadPool](https://github.com/jhasse/ThreadPool): Commit [46dc359](https://github.com/jhasse/ThreadPool/tree/46dc359fb58699685e384142727ebbbb6286d355)
 
 ## 라이선스
 ```

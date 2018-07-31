@@ -9,6 +9,8 @@
 #include <memory>
 
 #ifdef DLINK_MULTITHREADING
+#	include <Dlink/threading.hpp>
+
 #	include <future>
 #	include <mutex>
 #	include <thread>
@@ -22,46 +24,9 @@ namespace dlink
 	{
 #ifdef DLINK_MULTITHREADING
 		const std::size_t results_size = results.size();
-		std::size_t count_of_threads = metadata.options().count_of_threads();
-
-		if (count_of_threads == 0)
-		{
-			count_of_threads = std::thread::hardware_concurrency();
-		
-			if (count_of_threads == 0)
-			{
-				count_of_threads = 4;
-			}
-		}
-
-		count_of_threads = std::min(count_of_threads, metadata.options().input_files().size());
-
-		if (count_of_threads == 1)
-		{
-			return decode_singlethread(metadata, results);
-		}
-
 		const std::size_t input_files_size = metadata.options().input_files().size();
 
-		std::size_t average = input_files_size / count_of_threads;
-		std::size_t remainder = input_files_size % count_of_threads;
-
-		if (average < 4)
-		{
-			count_of_threads = input_files_size / 4;
-
-			average = input_files_size / count_of_threads;
-			remainder = input_files_size % count_of_threads;
-		}
-
-		if (remainder != 0)
-		{
-			const std::size_t remainder_average = remainder / count_of_threads;
-			const std::size_t remainder_remainder = remainder % count_of_threads;
-
-			average += remainder_average;
-			remainder = remainder_remainder;
-		}
+		const threading_info info = get_threading_info(metadata);
 
 		static auto decode_multithread = [&](std::size_t begin, std::size_t end) -> bool
 		{
@@ -82,15 +47,19 @@ namespace dlink
 
 		std::vector<std::future<bool>> futures;
 
-		for (std::size_t i = 0; i < count_of_threads - 1; ++i)
+		for (std::size_t i = 0; i < info.count_of_threads - 1; ++i)
 		{
 			futures.push_back(
-				std::async(decode_multithread, i * average + results_size, (i + 1) * average + results_size)
+				std::async(decode_multithread,
+						   i * info.average + results_size,
+						   (i + 1) * info.average + results_size)
 			);
 		}
 
 		futures.push_back(
-			std::async(decode_multithread, (count_of_threads - 1) * average + results_size, count_of_threads * average + results_size + remainder)
+			std::async(decode_multithread,
+					   (info.count_of_threads - 1) * info.average + results_size,
+					   info.count_of_threads * info.average + results_size + info.remainder)
 		);
 
 		bool result = true;
