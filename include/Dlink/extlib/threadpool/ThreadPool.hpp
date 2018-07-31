@@ -9,7 +9,7 @@ class ThreadPool {
 public:
     explicit ThreadPool(size_t);
     template<class F, class... Args>
-    decltype(auto) enqueue(F&& f, Args&&... args)
+	decltype(auto) enqueue(F&& f, Args&&... args);
     ~ThreadPool();
 private:
     // need to keep track of threads so we can join them
