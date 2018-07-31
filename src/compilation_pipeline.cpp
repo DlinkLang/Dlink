@@ -1,12 +1,13 @@
 #include <Dlink/compilation_pipeline.hpp>
 
+#include <Dlink/decoder.hpp>
+#include <Dlink/lexer.hpp>
+
 #include <iostream>
 #include <utility>
 
 #ifdef DLINK_MULTITHREADING
 #	include <Dlink/threading.hpp>
-
-#	include <future>
 #endif
 
 namespace dlink
@@ -50,11 +51,7 @@ namespace dlink
 	bool compilation_pipeline::compile_until_lexing()
 	{
 #ifdef DLINK_MULTITHREADING
-		const std::size_t input_files_size = metadata_.options().input_files().size();
-
-		const threading_info info = get_threading_info(metadata_);
-
-		static auto compile_multithread = [&](std::size_t begin, std::size_t end) -> bool
+		auto compile_multithread = [&](std::size_t begin, std::size_t end) -> bool
 		{
 			bool result = true;
 
@@ -66,37 +63,12 @@ namespace dlink
 			return result;
 		};
 
-		for (std::size_t i = 0; i < input_files_size; ++i)
+		for (const std::string& path : metadata_.options().input_files())
 		{
-			sources_.emplace_back(metadata_.options().input_files()[i]);
+			sources_.emplace_back(path);
 		}
 
-		std::vector<std::future<bool>> futures;
-
-		for (std::size_t i = 0; i < info.count_of_threads - 1; ++i)
-		{
-			futures.push_back(
-				std::async(compile_multithread,
-						   i * info.average, (i + 1) * info.average
-				)
-			);
-		}
-
-		futures.push_back(
-			std::async(compile_multithread,
-					   (info.count_of_threads - 1) * info.average,
-					   info.count_of_threads * info.average + info.remainder)
-		);
-
-		bool result = true;
-
-		for (std::future<bool>& future : futures)
-		{
-			future.wait();
-			result = result && future.get();
-		}
-
-		return result;
+		return parallel(compile_multithread, get_threading_info(metadata_));
 #else
 		return compile_until_lexing_singlethread();
 #endif

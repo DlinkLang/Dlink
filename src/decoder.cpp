@@ -22,12 +22,7 @@ namespace dlink
 	bool decoder::decode(compiler_metadata& metadata, std::vector<source>& results)
 	{
 #ifdef DLINK_MULTITHREADING
-		const std::size_t results_size = results.size();
-		const std::size_t input_files_size = metadata.options().input_files().size();
-
-		const threading_info info = get_threading_info(metadata);
-
-		static auto decode_multithread = [&](std::size_t begin, std::size_t end) -> bool
+		auto decode_multithread = [&](std::size_t begin, std::size_t end) -> bool
 		{
 			bool result = true;
 
@@ -39,37 +34,12 @@ namespace dlink
 			return result;
 		};
 
-		for (std::size_t i = 0; i < input_files_size; ++i)
+		for (const std::string& path : metadata.options().input_files())
 		{
-			results.emplace_back(metadata.options().input_files()[i]);
+			results.emplace_back(path);
 		}
 
-		std::vector<std::future<bool>> futures;
-
-		for (std::size_t i = 0; i < info.count_of_threads - 1; ++i)
-		{
-			futures.push_back(
-				std::async(decode_multithread,
-						   i * info.average + results_size,
-						   (i + 1) * info.average + results_size)
-			);
-		}
-		
-		futures.push_back(
-			std::async(decode_multithread,
-					   (info.count_of_threads - 1) * info.average + results_size,
-					   info.count_of_threads * info.average + results_size + info.remainder)
-		);
-
-		bool result = true;
-
-		for (std::future<bool>& future : futures)
-		{
-			future.wait();
-			result = result && future.get();
-		}
-
-		return result;
+		return parallel(decode_multithread, get_threading_info(metadata), results.size());
 #else
 		return decode_singlethread(metadata, results);
 #endif

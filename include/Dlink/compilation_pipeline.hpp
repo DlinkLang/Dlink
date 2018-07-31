@@ -3,8 +3,6 @@
 
 #include <Dlink/compiler_metadata.hpp>
 #include <Dlink/compiler_options.hpp>
-#include <Dlink/decoder.hpp>
-#include <Dlink/lexer.hpp>
 #include <Dlink/source.hpp>
 
 #include <ostream>

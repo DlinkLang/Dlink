@@ -13,6 +13,10 @@
 #include <boost/iostreams/stream.hpp>
 #include <boost/iostreams/device/array.hpp>
 
+#ifdef DLINK_MULTITHREADING
+#	include <Dlink/threading.hpp>
+#endif
+
 namespace dlink
 {
 #define MAP_KEYWORD(keyword) MAP_KEYWORD_INTERNAL(keyword, keyword_) 
@@ -141,9 +145,23 @@ namespace dlink
 
 	bool lexer::lex(compiler_metadata& metadata, std::vector<source>& sources)
 	{
-		// TODO
+#ifdef DLINK_MULTITHREADING
+		auto lex_multithread = [&](std::size_t begin, std::size_t end) -> bool
+		{
+			bool result = true;
 
-		return true;
+			for (std::size_t i = begin; i < end; ++i)
+			{
+				result = result && lex_source(sources[i], metadata);
+			}
+
+			return result;
+		};
+
+		return parallel(lex_multithread, get_threading_info(metadata));
+#else
+		return lex_singlethread(metadata, sources);
+#endif
 	}
 	bool lexer::lex_singlethread(compiler_metadata& metadata, std::vector<source>& sources)
 	{
