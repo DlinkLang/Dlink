@@ -1,11 +1,6 @@
-#include <Dlink/compiler_metadata.hpp>
-#include <Dlink/compiler_options.hpp>
-#include <Dlink/decoder.hpp>
-#include <Dlink/lexer.hpp>
-#include <Dlink/message.hpp>
+#include <Dlink/compilation_pipeline.hpp>
 
-#include <iostream>
-#include <vector>
+#include <utility>
 
 int main(int argc, char** argv)
 {
@@ -16,16 +11,10 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	dlink::compiler_metadata metadata(options);
+	dlink::compilation_pipeline pipeline(std::move(options));
 	
-	std::vector<dlink::source> results;
-	dlink::decoder::decode(metadata, results);
-	dlink::lexer::lex_singlethread(metadata, results);
-
-	for (auto a : metadata.messages())
-	{
-		std::cout << dlink::to_string(a) << "\n\n";
-	}
+	pipeline.compile_until_lexing();
+	pipeline.dump_messages();
 
 	return 0;
 }
@@ -33,6 +22,7 @@ int main(int argc, char** argv)
 #include <climits>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 
 static_assert(sizeof(char) == sizeof(std::int8_t));
 static_assert(sizeof(std::size_t) >= sizeof(std::int32_t));

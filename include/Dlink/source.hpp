@@ -6,6 +6,7 @@
 
 #include <string>
 #include <string_view>
+#include <vector>
 
 #ifdef DLINK_MULTITHREADING
 #	include <mutex>
@@ -44,6 +45,8 @@ namespace dlink
 		bool decode(compiler_metadata& metadata);
 		bool lex(compiler_metadata& metadata);
 
+		bool compile_until_lexing(compiler_metadata& metadata);
+
 	public:
 		const std::string& codes() const noexcept;
 		const std::string& path() const noexcept;
@@ -67,6 +70,8 @@ namespace dlink
 		mutable std::mutex tokens_mutex_;
 #endif
 	};
+
+	using sources = std::vector<source>;
 }
 
 #endif

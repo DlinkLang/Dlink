@@ -58,6 +58,18 @@ namespace dlink
 		return lexer::lex_source(*this, metadata);
 	}
 
+	bool source::compile_until_lexing(compiler_metadata& metadata)
+	{
+		bool result = decode(metadata);
+
+		if (result)
+		{
+			result = lex(metadata);
+		}
+
+		return result;
+	}
+
 	const std::string& source::path() const noexcept
 	{
 		return path_;

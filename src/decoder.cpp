@@ -13,7 +13,6 @@
 
 #	include <future>
 #	include <mutex>
-#	include <thread>
 #endif
 
 #include <Dlink/extlib/utf8/utf8.h>
@@ -55,7 +54,7 @@ namespace dlink
 						   (i + 1) * info.average + results_size)
 			);
 		}
-
+		
 		futures.push_back(
 			std::async(decode_multithread,
 					   (info.count_of_threads - 1) * info.average + results_size,
