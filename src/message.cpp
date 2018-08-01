@@ -238,7 +238,7 @@ namespace dlink
 		const std::string line_string = std::to_string(line);
 		const std::string empty_line = std::string(line_string.size(), ' ') + " |";
 		std::string result = std::string(line_string.size(), ' ') + " |\n" +
-							 line_string + " | " + source.data() + '\n';
+							 line_string + " | " + std::string(source.data(), source.length()) + '\n';
 
 		result += empty_line;
 		result += std::string(col, ' ') + std::string(length, '^');

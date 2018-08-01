@@ -204,7 +204,7 @@ namespace dlink
 			while (!line_stream->eof())
 			{
 				const char c = static_cast<char>(line_stream->get());
-				const std::fpos_t i = line_stream->tellg().seekpos();
+				const std::fpos_t i = line_stream->tellg().seekpos() - 1;
 
 				if (std::isdigit(c))
 				{
@@ -224,9 +224,16 @@ namespace dlink
 							temp += next_c;
 							base = 2;
 
+							bool error = false;
+
 							while (!is_whitespace(*line_stream))
 							{
 								line_stream->read(&next_c, 1);
+
+								if (error)
+								{
+									continue;
+								}
 
 								if (next_c == '0' || next_c == '1')
 								{
@@ -240,11 +247,14 @@ namespace dlink
 										generate_source(current_line, line, static_cast<std::size_t>(line_stream->tellg().seekpos()), 1)
 										));
 
-									return false;
+									error = true;
 								}
 							}
 
-							tokens.emplace_back(temp, token_type::integer_bin, line, i);
+							if (!error)
+							{
+								tokens.emplace_back(temp, token_type::integer_bin, line, i);
+							}
 						}
 						}
 					}

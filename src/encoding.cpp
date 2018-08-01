@@ -358,7 +358,7 @@ namespace dlink
 
 		if (length == 1)
 		{
-			if (eols.find(std::string_view(&c, 1)) != eols.end())
+			if (whitespaces.find(std::string_view(&c, 1)) != whitespaces.end())
 			{
 				stream.read(&c, 1);
 
@@ -375,7 +375,7 @@ namespace dlink
 			char c_array[3] = { c, 0, 0 };
 			stream.read(c_array + 1, length - 1);
 
-			if (eols.find(std::string_view(c_array, length)) != eols.end())
+			if (whitespaces.find(std::string_view(c_array, length)) != whitespaces.end())
 			{
 				return true;
 			}

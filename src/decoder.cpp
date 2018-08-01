@@ -47,20 +47,15 @@ namespace dlink
 	bool decoder::decode_singlethread(compiler_metadata& metadata, std::vector<source>& results)
 	{
 		const std::size_t size = results.size();
+		bool result = true;
 
 		for (const std::string& path : metadata.options().input_files())
 		{
 			source& src = results.emplace_back(path);
-			bool result = decode_source(src, metadata);
-
-			if (!result)
-			{
-				results.erase(results.begin() + size, results.end() - 1);
-				return false;
-			}
+			result = result && decode_source(src, metadata);
 		}
 
-		return true;
+		return result;
 	}
 	bool decoder::decode_source(source& source, compiler_metadata& metadata)
 	{
