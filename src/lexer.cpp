@@ -187,7 +187,6 @@ namespace dlink
 		memorystream stream(
 			const_cast<char*>(source.codes().c_str()), source.codes().length()
 		);
-		std::unique_ptr<memorystream> line_stream = nullptr;
 		std::string_view current_line;
 
 		dlink::tokens tokens;
@@ -197,14 +196,14 @@ namespace dlink
 		while (getline(stream, source.codes().c_str(), current_line))
 		{
 			++line;
-			line_stream = std::make_unique<memorystream>(current_line.data(), current_line.size());
+			memorystream line_stream(current_line.data(), current_line.length());
 
 			const std::fpos_t length = current_line.size();
 
-			while (!line_stream->eof())
+			while (!line_stream.eof())
 			{
-				const char c = static_cast<char>(line_stream->get());
-				const std::fpos_t i = line_stream->tellg().seekpos() - 1;
+				const char c = static_cast<char>(line_stream.get());
+				const std::fpos_t i = line_stream.tellg().seekpos() - 1;
 
 				if (std::isdigit(c))
 				{
@@ -214,7 +213,7 @@ namespace dlink
 					if (c == '0' && i < length - 2)
 					{
 						char next_c;
-						line_stream->read(&next_c, 1);
+						line_stream.read(&next_c, 1);
 
 						switch (next_c)
 						{
@@ -226,9 +225,9 @@ namespace dlink
 
 							bool error = false;
 
-							while (!is_whitespace(*line_stream))
+							while (!is_whitespace(line_stream))
 							{
-								line_stream->read(&next_c, 1);
+								line_stream.read(&next_c, 1);
 
 								if (error)
 								{
@@ -243,8 +242,8 @@ namespace dlink
 								{
 									metadata.messages().push_back(std::make_shared<error_message>(
 										2000, "Invalid digit '"s + next_c + "' in binary literal.",
-										generate_line_col(source.path(), line, static_cast<std::size_t>(line_stream->tellg().seekpos())),
-										generate_source(current_line, line, static_cast<std::size_t>(line_stream->tellg().seekpos()), 1)
+										generate_line_col(source.path(), line, static_cast<std::size_t>(line_stream.tellg().seekpos())),
+										generate_source(current_line, line, static_cast<std::size_t>(line_stream.tellg().seekpos()), 1)
 										));
 
 									error = true;
