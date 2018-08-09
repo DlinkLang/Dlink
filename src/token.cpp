@@ -185,6 +185,45 @@ namespace dlink
 
 namespace dlink
 {
+	const std::vector<char> special_characters =
+	{
+		'~',
+		'`',
+		'!',
+		'@',
+		'#',
+		'$',
+		'%',
+		'^',
+		'&',
+		'*',
+		'(',
+		')',
+		'_',
+		'-',
+		'+',
+		'=',
+		'|',
+		'\\',
+		'{',
+		'[',
+		'}',
+		']',
+		':',
+		';',
+		'"',
+		'\'',
+		'<',
+		',',
+		'>',
+		'.',
+		'?',
+		'/',
+	};
+}
+
+namespace dlink
+{
 	token::token(const std::string_view& data, token_type type, std::size_t line, std::size_t col)
 		: data_(data), type_(type), line_(line), col_(col)
 	{}

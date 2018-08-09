@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace dlink
 {
@@ -176,13 +177,14 @@ namespace dlink
 
 	std::string to_string(token_type type);
 
+	extern const std::vector<char> special_characters;
+
 	class token final
 	{
 	public:
 		token() = default;
 		token(const std::string_view& data, token_type type, std::size_t line, std::size_t col);
 		token(const token& token);
-		token(token&& token) noexcept = delete;
 		~token() = default;
 
 	public:
