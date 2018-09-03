@@ -98,9 +98,6 @@ namespace dlink
 		}
 		my_& operator=(std::initializer_list<Ty_> init)
 		{
-			if (this == &other)
-				return *this;
-
 			std::lock_guard<std::mutex> guard(mutex_);
 
 			data_ = init;

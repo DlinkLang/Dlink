@@ -88,7 +88,7 @@ namespace dlink
 		const std::streampos pos = stream.tellg();
 		stream.seekg(0, std::ios::end);
 
-		const std::fpos_t length = stream.tellg().seekpos() - pos.seekpos();
+		const std::streamoff length = stream.tellg() - pos;
 		stream.seekg(pos, std::ios::beg);
 
 		switch (detected_encoding)

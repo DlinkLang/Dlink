@@ -1,5 +1,6 @@
 #include <Dlink/token.hpp>
 
+#include <algorithm>
 #include <map>
 #include <utility>
 
@@ -220,6 +221,12 @@ namespace dlink
 		'?',
 		'/',
 	};
+
+	bool is_special_character(char character)
+	{
+		return std::find(special_characters.begin(), special_characters.end(), character) !=
+			special_characters.end();
+	}
 }
 
 namespace dlink

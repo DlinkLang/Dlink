@@ -178,6 +178,7 @@ namespace dlink
 	std::string to_string(token_type type);
 
 	extern const std::vector<char> special_characters;
+	bool is_special_character(char character);
 
 	class token final
 	{
