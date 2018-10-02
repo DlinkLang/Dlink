@@ -122,7 +122,7 @@ namespace dlink
 			}
 
 			std::size_t length = 0;
-			const std::size_t pos = stream.tellg().seekpos();
+			const std::size_t pos = static_cast<std::size_t>(stream.tellg());
 			
 			while (!is_eol(stream))
 			{
@@ -198,12 +198,12 @@ namespace dlink
 			++line;
 			memorystream line_stream(current_line.data(), current_line.length());
 
-			const std::fpos_t length = current_line.size();
+			const std::size_t length = current_line.size();
 
 			while (!line_stream.eof())
 			{
 				const char c = static_cast<char>(line_stream.get());
-				const std::fpos_t i = line_stream.tellg().seekpos() - 1;
+				const std::size_t i = static_cast<std::size_t>(line_stream.tellg()) - 1;
 
 				if (std::isdigit(c))
 				{
@@ -240,10 +240,12 @@ namespace dlink
 								}
 								else if (next_c != '_')
 								{
+									const std::size_t pos = static_cast<std::size_t>(line_stream.tellg());
+
 									metadata.messages().push_back(std::make_shared<error_message>(
 										2000, "Invalid digit '"s + next_c + "' in binary literal.",
-										generate_line_col(source.path(), line, static_cast<std::size_t>(line_stream.tellg().seekpos())),
-										generate_source(current_line, line, static_cast<std::size_t>(line_stream.tellg().seekpos()), 1)
+										generate_line_col(source.path(), line, pos),
+										generate_source(current_line, line, pos, 1)
 										));
 
 									error = true;
