@@ -273,7 +273,17 @@ namespace dlink
 				{
 					++length;
 				}
-				else if (!post_literal_pos && !is_valid_digit && length != 1)
+				else if (!post_literal_pos && !is_valid_digit && !std::isdigit(next_c) && length == 1)
+				{
+					token_type = dlink::token_type::integer_dec;
+
+					if (!post_literal_pos)
+					{
+						post_literal_pos = length;
+					}
+					post_literal_length++;
+				}
+				else if (!post_literal_pos && !is_valid_digit && std::isdigit(next_c))
 				{
 					error = true;
 
@@ -283,16 +293,6 @@ namespace dlink
 						generate_line_col(data.source.path(), data.line_line, pos),
 						generate_source(data.line, data.line_line, pos, 1)
 						));
-				}
-				else if (!post_literal_pos && !is_valid_digit && length == 1)
-				{
-					token_type = dlink::token_type::integer_dec;
-
-					if (!post_literal_pos)
-					{
-						post_literal_pos = length;
-					}
-					post_literal_length++;
 				}
 				else
 				{
