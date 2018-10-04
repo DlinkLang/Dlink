@@ -5,6 +5,7 @@
 #include <Dlink/source.hpp>
 #include <Dlink/token.hpp>
 
+#include <istream>
 #include <map>
 #include <string_view>
 
@@ -14,6 +15,20 @@ namespace dlink
 
 	class lexer final
 	{
+	private:
+		struct internal_lexing_data_
+		{
+			std::istream& line_stream;
+			std::string_view& line;
+			std::size_t line_length;
+			std::size_t line_line;
+			char c;
+
+			dlink::source& source;
+			compiler_metadata& metadata;
+			dlink::tokens& tokens;
+		};
+
 	public:
 		lexer() = delete;
 		lexer(const lexer& lexer) = delete;
@@ -30,6 +45,10 @@ namespace dlink
 		static bool lex(compiler_metadata& metadata, std::vector<source>& sources);
 		static bool lex_singlethread(compiler_metadata& metadata, std::vector<source>& sources);
 		static bool lex_source(source& source, compiler_metadata& metadata);
+
+	private:
+		static bool lex_number_(internal_lexing_data_ data);
+		static bool lex_number_with_base_(internal_lexing_data_ data, int base);
 	};
 }
 

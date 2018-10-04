@@ -86,6 +86,7 @@ namespace dlink
 	std::string_view get_whitespace_character(dlink::whitespace whitespace);
 	std::string to_string(dlink::whitespace whitespace);
 	bool is_whitespace(std::istream& stream);
+	bool is_whitespace(std::istream& stream, char& output);
 }
 
 #endif

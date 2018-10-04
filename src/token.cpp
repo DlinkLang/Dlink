@@ -234,8 +234,14 @@ namespace dlink
 	token::token(const std::string_view& data, token_type type, std::size_t line, std::size_t col)
 		: data_(data), type_(type), line_(line), col_(col)
 	{}
+	token::token(const std::string_view& data, token_type type, std::size_t line, std::size_t col,
+		const std::string_view& prefix_literal, const std::string_view& postfix_literal)
+		: data_(data), type_(type), line_(line), col_(col),
+		prefix_literal_(prefix_literal), postfix_literal_(postfix_literal)
+	{}
 	token::token(const token& token)
-		: data_(token.data_), type_(token.type_), line_(token.line_), col_(token.col_)
+		: data_(token.data_), type_(token.type_), line_(token.line_), col_(token.col_),
+		prefix_literal_(token.prefix_literal_), postfix_literal_(token.postfix_literal_)
 	{}
 
 	token& token::operator=(const token& token)
@@ -244,6 +250,8 @@ namespace dlink
 		type_ = token.type_;
 		line_ = token.line_;
 		col_ = token.col_;
+		prefix_literal_ = token.prefix_literal_;
+		postfix_literal_ = token.postfix_literal_;
 
 		return *this;
 	}
@@ -254,11 +262,13 @@ namespace dlink
 		type_ = token_type::none;
 		line_ = 0;
 		col_ = 0;
+		prefix_literal_ = "";
+		postfix_literal_ = "";
 	}
 	bool token::empty() const noexcept
 	{
 		return data_.empty() && type_ == token_type::none &&
-			line_ == 0 && col_ == 0;
+			line_ == 0 && col_ == 0 && prefix_literal_.empty() && prefix_literal_.empty();
 	}
 
 	std::size_t token::line() const noexcept
@@ -292,5 +302,21 @@ namespace dlink
 	void token::data(const std::string_view& new_data) noexcept
 	{
 		data_ = new_data;
+	}
+	const std::string_view& token::prefix_literal() const noexcept
+	{
+		return prefix_literal_;
+	}
+	void token::prefix_literal(const std::string_view& new_prefix_literal) noexcept
+	{
+		prefix_literal_ = new_prefix_literal;
+	}
+	const std::string_view& token::postfix_literal() const noexcept
+	{
+		return postfix_literal_;
+	}
+	void token::postfix_literal(const std::string_view& new_postfix_literal) noexcept
+	{
+		postfix_literal_ = new_postfix_literal;
 	}
 }

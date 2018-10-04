@@ -181,7 +181,7 @@ namespace dlink
 		
 		using namespace std::string_literals;
 		using memorystream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
-
+		
 		std::size_t line = 0;
 
 		memorystream stream(
@@ -192,6 +192,9 @@ namespace dlink
 		dlink::tokens tokens;
 
 		bool multiline_comment = false;
+		bool ok = true;
+
+#define make_internal_lexing_data() (internal_lexing_data_{ line_stream, current_line, length, line, c, source, metadata, tokens })
 
 		while (getline(stream, source.codes().c_str(), current_line))
 		{
@@ -207,63 +210,256 @@ namespace dlink
 
 				if (std::isdigit(c))
 				{
-					std::string temp = "0";
-					int base = 0;
-
-					if (c == '0' && i < length - 2)
-					{
-						char next_c;
-						line_stream.read(&next_c, 1);
-
-						switch (next_c)
-						{
-						case 'B':
-						case 'b':
-						{
-							temp += next_c;
-							base = 2;
-
-							bool error = false;
-
-							while (!is_whitespace(line_stream))
-							{
-								line_stream.read(&next_c, 1);
-
-								if (error)
-								{
-									continue;
-								}
-
-								if (next_c == '0' || next_c == '1')
-								{
-									temp += next_c;
-								}
-								else if (next_c != '_')
-								{
-									const std::size_t pos = static_cast<std::size_t>(line_stream.tellg());
-
-									metadata.messages().push_back(std::make_shared<error_message>(
-										2000, "Invalid digit '"s + next_c + "' in binary literal.",
-										generate_line_col(source.path(), line, pos),
-										generate_source(current_line, line, pos, 1)
-										));
-
-									error = true;
-								}
-							}
-
-							if (!error)
-							{
-								tokens.emplace_back(temp, token_type::integer_bin, line, i);
-							}
-						}
-						}
-					}
+					ok = ok && lex_number_(make_internal_lexing_data());
 				}
 			}
 		}
 
-		source.tokens(std::move(tokens));
-		return true;
+#undef make_internal_lexing_data
+
+		if (ok)
+		{
+			source.tokens(std::move(tokens));
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	bool lexer::lex_number_(internal_lexing_data_ data)
+	{
+		using namespace std::string_literals;
+
+		const std::size_t c_pos = static_cast<std::size_t>(data.line_stream.tellg()) - 1;
+		std::size_t length = 1;
+		std::size_t post_literal_pos = 0;
+		std::size_t post_literal_length = 0;
+
+		dlink::token_type token_type = dlink::token_type::none;
+		std::string_view prefix;
+
+		bool error = false;
+
+		if (data.c == '0')
+		{
+			char next_c;
+			const bool ws = is_whitespace(data.line_stream, next_c);
+
+			if (ws)
+			{
+				token_type = dlink::token_type::integer_dec;
+				goto exit;
+			}
+
+			switch (next_c)
+			{
+			case 'B':
+			case 'b':
+				return lex_number_with_base_(data, 2);
+
+			case 'X':
+			case 'x':
+				return lex_number_with_base_(data, 16);
+			}
+
+			token_type = dlink::token_type::integer_oct;
+
+			do
+			{
+				const bool is_valid_digit = (next_c >= '0' && next_c <= '7') || next_c == '_';
+
+				if (!post_literal_pos && is_valid_digit)
+				{
+					++length;
+				}
+				else if (!post_literal_pos && !is_valid_digit && length != 1)
+				{
+					error = true;
+
+					const std::size_t pos = static_cast<std::size_t>(data.line_stream.tellg());
+					data.metadata.messages().push_back(std::make_shared<error_message>(
+						2001, "Invalid digit '"s + next_c + "' in octal literal.",
+						generate_line_col(data.source.path(), data.line_line, pos),
+						generate_source(data.line, data.line_line, pos, 1)
+						));
+				}
+				else if (!post_literal_pos && !is_valid_digit && length == 1)
+				{
+					token_type = dlink::token_type::integer_dec;
+
+					if (!post_literal_pos)
+					{
+						post_literal_pos = length;
+					}
+					post_literal_length++;
+				}
+				else
+				{
+					if (!post_literal_pos)
+					{
+						post_literal_pos = length;
+					}
+					post_literal_length++;
+				}
+			} while (!is_whitespace(data.line_stream, next_c));
+
+			goto exit;
+		}
+		
+		char next_c;
+
+		while (!is_whitespace(data.line_stream, next_c))
+		{
+			const bool is_valid_digit = std::isdigit(next_c) || next_c == '_';
+
+			if (!post_literal_pos && is_valid_digit)
+			{
+				++length;
+			}
+			else if (!post_literal_pos && !is_valid_digit)
+			{
+				error = true;
+
+				const std::size_t pos = static_cast<std::size_t>(data.line_stream.tellg());
+				data.metadata.messages().push_back(std::make_shared<error_message>(
+					2002, "Invalid digit '"s + next_c + "' in decimal literal.",
+					generate_line_col(data.source.path(), data.line_line, pos),
+					generate_source(data.line, data.line_line, pos, 1)
+					));
+			}
+			else
+			{
+				if (!post_literal_pos)
+				{
+					post_literal_pos = length;
+				}
+				post_literal_length++;
+			}
+		}
+
+		token_type = dlink::token_type::integer_dec;
+
+	exit:
+		if (!error)
+		{
+			data.tokens.emplace_back(data.line.substr(c_pos, length), token_type, data.line_line, c_pos, prefix,
+				data.line.substr(post_literal_pos, post_literal_length));
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	bool lexer::lex_number_with_base_(internal_lexing_data_ data, int base)
+	{
+		using namespace std::string_literals;
+
+		const auto is_digit = [base](char character)
+		{
+			if (base == 2)
+			{
+				return character == '0' || character == '1';
+			}
+			else // base == 16
+			{
+				return std::isdigit(character) || (character >= 'a' && character <= 'f') || (character >= 'A' && character <= 'F');
+			}
+		};
+		const auto error_id_invalid_digit = [base]()
+		{
+			if (base == 2)
+			{
+				return 2000;
+			}
+			else // base == 16
+			{
+				return 2003;
+			}
+		};
+		const auto error_id_invalid_format = [base]()
+		{
+			if (base == 2)
+			{
+				return 2004;
+			}
+			else // base == 16
+			{
+				return 2005;
+			}
+		};
+		const auto base_string = [base]()
+		{
+			if (base == 2)
+			{
+				return "binary";
+			}
+			else // base == 16
+			{
+				return "hexadecimal";
+			}
+		};
+
+		const std::size_t c_pos = static_cast<std::size_t>(data.line_stream.tellg()) - 2;
+		std::size_t length = 2;
+		std::size_t post_literal_pos = 0;
+		std::size_t post_literal_length = 0;
+
+		dlink::token_type token_type = base == 2 ? dlink::token_type::integer_bin : dlink::token_type::integer_hex;
+		std::string_view prefix;
+		std::string_view postfix;
+
+		char next_c;
+		bool error = false;
+
+		while (!is_whitespace(data.line_stream, next_c))
+		{
+			const bool is_valid_digit = is_digit(next_c) || next_c == '_';
+
+			if (!post_literal_pos && is_valid_digit)
+			{
+				++length;
+			}
+			else if (!post_literal_pos && !is_valid_digit)
+			{
+				error = true;
+
+				const std::size_t pos = static_cast<std::size_t>(data.line_stream.tellg());
+				data.metadata.messages().push_back(std::make_shared<error_message>(
+					error_id_invalid_digit(), "Invalid digit '"s + next_c + "' in " + base_string() + " literal.",
+					generate_line_col(data.source.path(), data.line_line, pos),
+					generate_source(data.line, data.line_line, pos, 1)
+					));
+			}
+			else
+			{
+				if (!post_literal_pos)
+				{
+					post_literal_pos = length;
+				}
+				post_literal_length++;
+			}
+		}
+
+		if (length == 2 && !error)
+		{
+			data.metadata.messages().push_back(std::make_shared<error_message>(
+				error_id_invalid_format(), "Invalid "s + base_string() + " literal.",
+				generate_line_col(data.source.path(), data.line_line, c_pos + 1),
+				generate_source(data.line, data.line_line, c_pos + 1, length)
+				));
+
+			return false;
+		}
+		else if (!error)
+		{
+			data.tokens.emplace_back(data.line.substr(c_pos, length), token_type, data.line_line, c_pos, prefix, postfix);
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
 }

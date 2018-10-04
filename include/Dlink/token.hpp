@@ -185,6 +185,8 @@ namespace dlink
 	public:
 		token() = default;
 		token(const std::string_view& data, token_type type, std::size_t line, std::size_t col);
+		token(const std::string_view& data, token_type type, std::size_t line, std::size_t col,
+			const std::string_view& prefix_literal, const std::string_view& postfix_literal);
 		token(const token& token);
 		~token() = default;
 
@@ -207,12 +209,18 @@ namespace dlink
 		void type(token_type new_type) noexcept;
 		const std::string_view& data() const noexcept;
 		void data(const std::string_view& new_data) noexcept;
+		const std::string_view& prefix_literal() const noexcept;
+		void prefix_literal(const std::string_view& new_prefix_literal) noexcept;
+		const std::string_view& postfix_literal() const noexcept;
+		void postfix_literal(const std::string_view& new_postfix_literal) noexcept;
 
 	private:
 		std::size_t line_ = 0;
 		std::size_t col_ = 0;
 		token_type type_ = token_type::none;
 		std::string_view data_;
+		std::string_view prefix_literal_;
+		std::string_view postfix_literal_;
 	};
 
 	using tokens = vector<token>;

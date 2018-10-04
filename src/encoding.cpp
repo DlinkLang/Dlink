@@ -384,4 +384,50 @@ namespace dlink
 		stream.seekg(-length, std::ios::cur);
 		return false;
 	}
+	bool is_whitespace(std::istream& stream, char& output)
+	{
+		char c;
+		stream.read(&c, 1);
+
+		if (!stream.good())
+			return true;
+
+		const int length = get_character_length(c);
+
+		if (length == 4)
+		{
+			output = c;
+			return false;
+		}
+
+		if (length == 1)
+		{
+			if (whitespaces.find(std::string_view(&c, 1)) != whitespaces.end())
+			{
+				stream.read(&c, 1);
+
+				if (c != '\u000A')
+				{
+					stream.seekg(-1, std::ios::cur);
+				}
+
+				return true;
+			}
+		}
+		else
+		{
+			char c_array[3] = { c, 0, 0 };
+			stream.read(c_array + 1, length - 1);
+
+			if (whitespaces.find(std::string_view(c_array, length)) != whitespaces.end())
+			{
+				return true;
+			}
+		}
+
+		stream.seekg(-length + 1, std::ios::cur);
+		output = c;
+
+		return false;
+	}
 }
