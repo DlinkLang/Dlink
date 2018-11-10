@@ -93,10 +93,8 @@ namespace dlink
 	class command final
 	{
 	public:
-		command(const std::string_view& command);
-		command(const std::string_view& command, command_parameter parameter);
-		command(const std::string_view& long_command, const std::string_view& short_command) noexcept;
-		command(const std::string_view& long_command, const std::string_view& short_command, command_parameter parameter) noexcept;
+		command(const std::string_view& command, const std::string_view& description);
+		command(const std::string_view& command, const std::string_view& description, command_parameter parameter);
 		command(const command& command) noexcept;
 		~command() = default;
 
@@ -111,11 +109,13 @@ namespace dlink
 	public:
 		std::string_view long_command() const noexcept;
 		std::string_view short_command() const noexcept;
+		std::string_view description() const noexcept;
 		command_parameter parameter() const noexcept;
 
 	private:
 		std::string_view long_;
 		std::string_view short_;
+		std::string_view description_;
 		command_parameter parameter_ = command_parameter::none;
 	};
 
@@ -138,8 +138,8 @@ namespace dlink
 			bool operator!=(const command_line_parser_add_options& parser) const = delete;
 			command_line_parser_add_options& operator()(const command& command);
 			command_line_parser_add_options& operator()(command&& command);
-			template<typename... Args_>
-			command_line_parser_add_options& operator()(Args_&&... args);
+			command_line_parser_add_options& operator()(const std::string_view& command, const std::string_view& description);
+			command_line_parser_add_options& operator()(const std::string_view& command, const std::string_view& description, command_parameter parameter);
 			command_line_parser_add_options& operator()();
 
 		public:
@@ -175,6 +175,8 @@ namespace dlink
 
 	class command_line_parser final
 	{
+		friend std::ostream& operator<<(std::ostream& stream, const command_line_parser& parser);
+
 	public:
 		command_line_parser();
 		command_line_parser(const command_line_parser& parser);
@@ -190,11 +192,8 @@ namespace dlink
 	public:
 		void add_option(const command& command);
 		void add_option(command&& command);
-		template<typename... Args_>
-		void add_option(Args_&&... args)
-		{
-			commands_.emplace_back(std::forward<Args_>(args)...);
-		}
+		void add_option(const std::string_view& command, const std::string_view& description);
+		void add_option(const std::string_view& command, const std::string_view& description, command_parameter parameter);
 		void add_section();
 		details::command_line_parser_add_options add_options() noexcept;
 
@@ -204,12 +203,6 @@ namespace dlink
 	private:
 		std::vector<std::vector<command>> commands_;
 	};
-
-	template<typename... Args_>
-	details::command_line_parser_add_options& details::command_line_parser_add_options::operator()(Args_&&... args)
-	{
-		return parser_.add_option(std::forward<Args_>(args)...), *this;
-	}
 
 	bool parse_command_line(int argc, char** argv, compiler_options& options);
 	bool parse_command_line(std::ostream& stream, int argc, char** argv, compiler_options& options);

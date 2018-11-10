@@ -154,29 +154,25 @@ namespace dlink
 
 namespace dlink
 {
-	command::command(const std::string_view& command)
+	command::command(const std::string_view& command, const std::string_view& description)
+		: description_(description)
 	{
 		parse_command_(command);
 	}
-	command::command(const std::string_view& command, command_parameter parameter)
-		: parameter_(parameter)
+	command::command(const std::string_view& command, const std::string_view& description, command_parameter parameter)
+		: description_(description), parameter_(parameter)
 	{
 		parse_command_(command);
 	}
-	command::command(const std::string_view& long_command, const std::string_view& short_command) noexcept
-		: long_(long_command), short_(short_command)
-	{}
-	command::command(const std::string_view& long_command, const std::string_view& short_command, command_parameter parameter) noexcept
-		: long_(long_command), short_(short_command), parameter_(parameter)
-	{}
 	command::command(const command& command) noexcept
-		: long_(command.long_), short_(command.short_), parameter_(command.parameter_)
+		: long_(command.long_), short_(command.short_), description_(command.description_), parameter_(command.parameter_)
 	{}
 
 	command& command::operator=(const command& command) noexcept
 	{
 		long_ = command.long_;
 		short_ = command.short_;
+		description_ = command.description_;
 		parameter_ = command.parameter_;
 
 		return *this;
@@ -205,6 +201,10 @@ namespace dlink
 	{
 		return short_;
 	}
+	std::string_view command::description() const noexcept
+	{
+		return description_;
+	}
 	command_parameter command::parameter() const noexcept
 	{
 		return parameter_;
@@ -224,6 +224,14 @@ namespace dlink::details
 	command_line_parser_add_options& command_line_parser_add_options::operator()(command&& command)
 	{
 		return parser_.add_option(std::move(command)), *this;
+	}
+	command_line_parser_add_options& command_line_parser_add_options::operator()(const std::string_view& command, const std::string_view& description)
+	{
+		return parser_.add_option(command, description), *this;
+	}
+	command_line_parser_add_options& command_line_parser_add_options::operator()(const std::string_view& command, const std::string_view& description, command_parameter parameter)
+	{
+		return parser_.add_option(command, description, parameter), *this;
 	}
 	command_line_parser_add_options& command_line_parser_add_options::operator()()
 	{
@@ -320,6 +328,79 @@ namespace dlink
 
 namespace dlink
 {
+	namespace
+	{
+		std::string new_line(std::string_view string, std::size_t max_width, std::size_t indent)
+		{
+			if (string.size() <= max_width) return std::string(string);
+
+			std::string result;
+
+			while (string.size() > max_width)
+			{
+				const std::size_t space = string.find_last_of(' ', 45);
+
+				result += string.substr(0, space);
+				result += '\n' + std::string(indent, ' ');
+				string = string.substr(space + 1);
+			}
+
+			return result += string;
+		}
+	}
+
+	std::ostream& operator<<(std::ostream& stream, const command_line_parser& parser)
+	{
+		stream << "Options:\n\n";
+
+		std::size_t max_length = 0;
+
+		for (auto& section : parser.commands_)
+		{
+			for (auto& command : section)
+			{
+				const std::size_t long_len = command.long_command().length();
+				const std::size_t short_len = command.short_command().length();
+				const std::size_t len = long_len + short_len;
+
+				max_length = std::max(max_length, len + (long_len != len && short_len != len ? 4 : 0) + (command.parameter() != command_parameter::none ? 4 : 0));
+			}
+		}
+		
+		for (auto& section : parser.commands_)
+		{
+			for (auto& command : section)
+			{
+				const std::size_t long_len = command.long_command().length();
+				const std::size_t short_len = command.short_command().length();
+
+				const std::string_view arg = command.parameter() != command_parameter::none ? " arg" : "";
+				const std::size_t arg_len = arg.length();
+
+				if (long_len && !short_len)
+				{
+					stream << "  --" << command.long_command() << arg << std::string(max_length - long_len - arg_len + 1, ' ')
+						   << new_line(command.description(), 45, max_length + 5) << '\n';
+				}
+				else if (!long_len && short_len)
+				{
+					stream << "  -" << command.short_command() << arg << std::string(max_length - short_len - arg_len + 2, ' ')
+						   << new_line(command.description(), 45, max_length + 5) << '\n';
+				}
+				else
+				{
+					stream << "  -" << command.short_command() << "(--" << command.long_command() << ')' << arg
+						   << std::string(max_length - long_len - short_len - arg_len - 2, ' ')
+						   << new_line(command.description(), 45, max_length + 5) << '\n';
+				}
+			}
+
+			stream << '\n';
+		}
+
+		return stream;
+	}
+
 	command_line_parser::command_line_parser()
 	{
 		commands_.emplace_back();
@@ -349,6 +430,14 @@ namespace dlink
 	void command_line_parser::add_option(command&& command)
 	{
 		commands_.back().push_back(std::move(command));
+	}
+	void command_line_parser::add_option(const std::string_view& command, const std::string_view& description)
+	{
+		commands_.back().emplace_back(command, description);
+	}
+	void command_line_parser::add_option(const std::string_view& command, const std::string_view& description, command_parameter parameter)
+	{
+		commands_.back().emplace_back(command, description, parameter);
 	}
 	details::command_line_parser_add_options command_line_parser::add_options() noexcept
 	{
@@ -381,17 +470,19 @@ namespace dlink
 		command_line_parser parser;
 		parser.add_options()
 			("help", "Display command-line options.")
-			("version", "Display compiler version information")
+			("version", "Display compiler version information.")
 			()
 #ifdef DLINK_MULTITHREADING
-			(",j", "Set the maximum number of threads to use when compiling.", command_parameter::integer)
+			("jobs,j", "Set the maximum number of threads to use when compiling.", command_parameter::integer)
 #endif
 			(",o", "Place the output into 'arg'.", command_parameter::string)
 			()
 			(",finput-encoding", "Set the input encoding.", command_parameter::string);
 		parser.accept_non_command = true;
 
-		try
+		stream << parser;
+
+		/*try
 		{
 			po::variables_map map;
 			po::store(po::command_line_parser(argc, argv).
@@ -468,13 +559,13 @@ namespace dlink
 				{
 					input_encoding_temp = encoding;
 				}
-			}
+			}*/
 
 			//
 			// Run
 			//
 			// Generic
-			if (options.help())
+			/*if (options.help())
 			{
 				stream << "Usage: " << argv[0] << " [options...] files...\n";
 				stream << visible << '\n';
@@ -536,15 +627,15 @@ namespace dlink
 				}
 
 				return false;
-			}
+			}*/
 
 			return true;
-		}
+		/*}
 		catch (const po::error& e)
 		{
 			stream << "Error: " << e.what() << ".\n\n";
 			
 			return false;
-		}
+		}*/
 	}
 }
