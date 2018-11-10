@@ -6,7 +6,6 @@
 #include <ios>
 #include <iostream>
 #include <stdexcept>
-#include <utility>
 
 #include <boost/program_options.hpp>
 
@@ -155,6 +154,214 @@ namespace dlink
 
 namespace dlink
 {
+	command::command(const std::string_view& command)
+	{
+		parse_command_(command);
+	}
+	command::command(const std::string_view& command, command_parameter parameter)
+		: parameter_(parameter)
+	{
+		parse_command_(command);
+	}
+	command::command(const std::string_view& long_command, const std::string_view& short_command) noexcept
+		: long_(long_command), short_(short_command)
+	{}
+	command::command(const std::string_view& long_command, const std::string_view& short_command, command_parameter parameter) noexcept
+		: long_(long_command), short_(short_command), parameter_(parameter)
+	{}
+	command::command(const command& command) noexcept
+		: long_(command.long_), short_(command.short_), parameter_(command.parameter_)
+	{}
+
+	command& command::operator=(const command& command) noexcept
+	{
+		long_ = command.long_;
+		short_ = command.short_;
+		parameter_ = command.parameter_;
+
+		return *this;
+	}
+
+	void command::parse_command_(const std::string_view& command)
+	{
+		const std::size_t comma_pos = command.find(',');
+
+		if (comma_pos == std::string_view::npos)
+		{
+			long_ = command;
+		}
+		else
+		{
+			long_ = command.substr(0, comma_pos);
+			short_ = command.substr(comma_pos + 1);
+		}
+	}
+
+	std::string_view command::long_command() const noexcept
+	{
+		return long_;
+	}
+	std::string_view command::short_command() const noexcept
+	{
+		return short_;
+	}
+	command_parameter command::parameter() const noexcept
+	{
+		return parameter_;
+	}
+}
+
+namespace dlink::details
+{
+	command_line_parser_add_options::command_line_parser_add_options(command_line_parser& parser) noexcept
+		: parser_(parser)
+	{}
+
+	command_line_parser_add_options& command_line_parser_add_options::operator()(const command& command)
+	{
+		return parser_.add_option(command), *this;
+	}
+	command_line_parser_add_options& command_line_parser_add_options::operator()(command&& command)
+	{
+		return parser_.add_option(std::move(command)), *this;
+	}
+	command_line_parser_add_options& command_line_parser_add_options::operator()()
+	{
+		return parser_.add_section(), *this;
+	}
+
+	command_line_parser& command_line_parser_add_options::parser() const noexcept
+	{
+		return parser_;
+	}
+}
+
+namespace dlink
+{
+	command_line_parser_result::command_line_parser_result(const std::map<command, std::pair<int, std::any>>& result)
+		: result_(result)
+	{}
+	command_line_parser_result::command_line_parser_result(std::map<command, std::pair<int, std::any>>&& result) noexcept
+		: result_(std::move(result))
+	{}
+	command_line_parser_result::command_line_parser_result(const command_line_parser_result& result)
+		: result_(result.result_)
+	{}
+	command_line_parser_result::command_line_parser_result(command_line_parser_result&& result) noexcept
+		: result_(std::move(result.result_))
+	{}
+
+	command_line_parser_result& command_line_parser_result::operator=(const command_line_parser_result& result)
+	{
+		result_ = result.result_;
+		return *this;
+	}
+	command_line_parser_result& command_line_parser_result::operator=(command_line_parser_result&& result) noexcept
+	{
+		result_ = std::move(result.result_);
+		return *this;
+	}
+
+	int command_line_parser_result::count(const std::string_view& command) const
+	{
+		std::map<dlink::command, std::pair<int, std::any>>::const_iterator iter;
+		std::string_view command_real;
+
+		if (command[1] == '-') // long
+		{
+			command_real = command.substr(2);
+			iter = std::find_if(result_.begin(), result_.end(),
+				[&command_real](const std::pair<dlink::command, std::pair<int, std::any>>& element)
+				{
+					return element.first.long_command() == command_real;
+				});
+		}
+		else // short
+		{
+			command_real = command.substr(1);
+			iter = std::find_if(result_.begin(), result_.end(),
+				[&command_real](const std::pair<dlink::command, std::pair<int, std::any>>& element)
+				{
+					return element.first.short_command() == command_real;
+				});
+		}
+
+		if (iter == result_.end()) return 0;
+		else return iter->second.first;
+	}
+	std::optional<std::any> command_line_parser_result::argument(const std::string_view& command) const
+	{
+		std::map<dlink::command, std::pair<int, std::any>>::const_iterator iter;
+		std::string_view command_real;
+
+		if (command[1] == '-') // long
+		{
+			command_real = command.substr(2);
+			iter = std::find_if(result_.begin(), result_.end(),
+				[&command_real](const std::pair<dlink::command, std::pair<int, std::any>>& element)
+				{
+					return element.first.long_command() == command_real;
+				});
+		}
+		else // short
+		{
+			command_real = command.substr(1);
+			iter = std::find_if(result_.begin(), result_.end(),
+				[&command_real](const std::pair<dlink::command, std::pair<int, std::any>>& element)
+				{
+					return element.first.short_command() == command_real;
+				});
+		}
+
+		if (iter == result_.end()) return std::nullopt;
+		else return iter->second.second;
+	}
+}
+
+namespace dlink
+{
+	command_line_parser::command_line_parser()
+	{
+		commands_.emplace_back();
+	}
+	command_line_parser::command_line_parser(const command_line_parser& parser)
+		: commands_(parser.commands_)
+	{}
+	command_line_parser::command_line_parser(command_line_parser&& parser) noexcept
+		: commands_(std::move(parser.commands_))
+	{}
+
+	command_line_parser& command_line_parser::operator=(const command_line_parser& parser)
+	{
+		commands_ = parser.commands_;
+		return *this;
+	}
+	command_line_parser& command_line_parser::operator=(command_line_parser&& parser) noexcept
+	{
+		commands_ = std::move(parser.commands_);
+		return *this;
+	}
+
+	void command_line_parser::add_option(const command& command)
+	{
+		commands_.back().push_back(command);
+	}
+	void command_line_parser::add_option(command&& command)
+	{
+		commands_.back().push_back(std::move(command));
+	}
+	details::command_line_parser_add_options command_line_parser::add_options() noexcept
+	{
+		return details::command_line_parser_add_options(*this);
+	}
+	void command_line_parser::add_section()
+	{
+		commands_.emplace_back();
+	}
+}
+
+namespace dlink
+{
 	bool parse_command_line(int argc, char** argv, compiler_options& options)
 	{
 		return parse_command_line(std::cout, argc, argv, options);
@@ -171,34 +378,18 @@ namespace dlink
 		namespace po = boost::program_options;
 		options.clear();
 
-		po::options_description generic;
-		generic.add_options()
+		command_line_parser parser;
+		parser.add_options()
 			("help", "Display command-line options.")
-			("version", "Display compiler version information.");
-
-		po::options_description config;
-		config.add_options()
+			("version", "Display compiler version information")
+			()
 #ifdef DLINK_MULTITHREADING
-			("jobs,j", po::value<std::int32_t>(), "Set the maximum number of threads to use when compiling.")
+			(",j", "Set the maximum number of threads to use when compiling.", command_parameter::integer)
 #endif
-			("output,o", po::value<std::string>(), "Place the output into 'arg'.");
-
-		po::options_description flag;
-		flag.add_options()
-			("input-encoding", po::value<std::string>(), "Set the input encoding.");
-
-		po::options_description hidden;
-		hidden.add_options()
-			("input-file", po::value<std::vector<std::string>>(), "");
-
-		po::positional_options_description p;
-		p.add("input-file", -1);
-
-		po::options_description visible("Options");
-		visible.add(generic).add(config).add(flag);
-
-		po::options_description description;
-		description.add(visible).add(hidden);
+			(",o", "Place the output into 'arg'.", command_parameter::string)
+			()
+			(",finput-encoding", "Set the input encoding.", command_parameter::string);
+		parser.accept_non_command = true;
 
 		try
 		{
