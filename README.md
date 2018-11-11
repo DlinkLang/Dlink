@@ -9,6 +9,10 @@
 - [UTF8-CPP](https://github.com/nemtrif/utfcpp): Version 2.3.5
 - [JSON for Modern C++](https://github.com/nlohmann/json): Version 3.4.0
 
+## 예전 프로젝트
+- [Dlink-Prototype](https://github.com/DlinkLang/Dlink-Prototype)
+- [Dlink-old](https://github.com/kmc7468/Dlink-old)
+
 ## 라이선스
 ```
 MIT License
