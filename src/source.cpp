@@ -70,6 +70,37 @@ namespace dlink
 		return result;
 	}
 
+	nlohmann::json source::dump() const
+	{
+		nlohmann::json object;
+		object["path"] = path_;
+
+		const int state_int = static_cast<int>(state_);
+
+		if (state_int >= static_cast<int>(source_state::lexed))
+		{
+			object["tokens"] = dump_tokens();
+		}
+
+		return object;
+	}
+	nlohmann::json source::dump_tokens() const
+	{
+		nlohmann::json array;
+		
+		if (state_ == source_state::lexed)
+		{
+			for (const token& token : tokens_)
+			{
+				array.push_back(token.dump());
+			}
+		}
+		else
+			throw invalid_state("The state must be 'dlink::source_state::lexed' when 'nlohmann::json dlink::source::dump_tokens(void) const' method is called.");
+		
+		return array;
+	}
+
 	const std::string& source::path() const noexcept
 	{
 		return path_;

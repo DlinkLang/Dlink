@@ -85,6 +85,21 @@ namespace dlink
 		return result;
 	}
 
+	nlohmann::json compilation_pipeline::dump_sources() const
+	{
+		nlohmann::json object;
+		nlohmann::json array;
+
+		for (const source& source : sources_)
+		{
+			array.push_back(source.dump());
+		}
+
+		object["sources"] = array;
+
+		return object;
+	}
+
 	const compiler_metadata& compilation_pipeline::metadata() const noexcept
 	{
 		return metadata_;

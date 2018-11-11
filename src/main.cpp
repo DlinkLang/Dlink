@@ -1,6 +1,6 @@
 #include <Dlink/compilation_pipeline.hpp>
 
-#include <utility>
+#include <iostream>
 
 int main(int argc, char** argv)
 {
@@ -15,6 +15,8 @@ int main(int argc, char** argv)
 	
 	pipeline.compile_until_lexing();
 	pipeline.dump_messages();
+
+	std::cout << pipeline.dump_sources().dump(4) << '\n';
 
 	return 0;
 }

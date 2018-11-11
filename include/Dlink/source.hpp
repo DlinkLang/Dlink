@@ -3,6 +3,7 @@
 
 #include <Dlink/compiler_metadata.hpp>
 #include <Dlink/token.hpp>
+#include <Dlink/extlib/json.hpp>
 
 #include <string>
 #include <string_view>
@@ -46,6 +47,9 @@ namespace dlink
 		bool lex(compiler_metadata& metadata);
 
 		bool compile_until_lexing(compiler_metadata& metadata);
+
+		nlohmann::json dump() const;
+		nlohmann::json dump_tokens() const;
 
 	public:
 		const std::string& codes() const noexcept;

@@ -4,6 +4,7 @@
 #include <Dlink/compiler_metadata.hpp>
 #include <Dlink/compiler_options.hpp>
 #include <Dlink/source.hpp>
+#include <Dlink/extlib/json.hpp>
 
 #include <ostream>
 #include <vector>
@@ -37,6 +38,8 @@ namespace dlink
 
 		bool compile_until_lexing();
 		bool compile_until_lexing_singlethread();
+
+		nlohmann::json dump_sources() const;
 
 	public:
 		const compiler_metadata& metadata() const noexcept;

@@ -2,6 +2,7 @@
 #define DLINK_HEADER_TOKEN_HPP
 
 #include <Dlink/vector.hpp>
+#include <Dlink/extlib/json.hpp>
 
 #include <cstddef>
 #include <string>
@@ -199,6 +200,8 @@ namespace dlink
 	public:
 		void clear() noexcept;
 		bool empty() const noexcept;
+
+		nlohmann::json dump() const;
 
 	public:
 		std::size_t line() const noexcept;

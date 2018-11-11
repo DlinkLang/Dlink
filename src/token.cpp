@@ -271,6 +271,18 @@ namespace dlink
 			line_ == 0 && col_ == 0 && prefix_literal_.empty() && prefix_literal_.empty();
 	}
 
+	nlohmann::json token::dump() const
+	{
+		nlohmann::json object;
+
+		object["data"] = data_;
+		object["location"] = { { "line", line_ }, { "col", col_ } };
+		object["type"] = to_string(type_);
+		object["literal"] = { { "prefix", prefix_literal_ }, { "postfix", postfix_literal_ } };
+
+		return object;
+	}
+
 	std::size_t token::line() const noexcept
 	{
 		return line_;
