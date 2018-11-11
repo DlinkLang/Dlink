@@ -4,7 +4,9 @@
 #include <Dlink/encoding.hpp>
 
 #include <any>
+#include <cstddef>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <ostream>
 #include <string>
@@ -153,8 +155,8 @@ namespace dlink
 	class command_line_parser_result final
 	{
 	public:
-		command_line_parser_result(const std::map<command, std::pair<int, std::any>>& result);
-		command_line_parser_result(std::map<command, std::pair<int, std::any>>&& result) noexcept;
+		command_line_parser_result(const std::map<const command*, std::vector<std::any>>& result);
+		command_line_parser_result(std::map<const command*, std::vector<std::any>>&& result) noexcept;
 		command_line_parser_result(const command_line_parser_result& result);
 		command_line_parser_result(command_line_parser_result&& result) noexcept;
 		~command_line_parser_result() = default;
@@ -166,11 +168,12 @@ namespace dlink
 		bool operator!=(const command_line_parser_result& result) const = delete;
 
 	public:
-		int count(const std::string_view& command) const;
-		std::optional<std::any> argument(const std::string_view& command) const;
+		std::size_t count(const std::string_view& command) const;
+		std::vector<std::any> argument(const std::string_view& command) const;
+		std::vector<std::any> non_command() const;
 
 	private:
-		std::map<command, std::pair<int, std::any>> result_;
+		std::map<const command*, std::vector<std::any>> result_;
 	};
 
 	class command_line_parser final
@@ -196,6 +199,7 @@ namespace dlink
 		void add_option(const std::string_view& command, const std::string_view& description, command_parameter parameter);
 		void add_section();
 		details::command_line_parser_add_options add_options() noexcept;
+		command_line_parser_result parse(int argc, char** argv) const;
 
 	public:
 		bool accept_non_command = false;

@@ -31,7 +31,7 @@ add_definitions(-D__STDC_CONSTANT_MACROS)
 add_definitions(-D__STDC_LIMIT_MACROS)
 
 set(BOOST_ROOT ${BOOST_DIRECTORY})
-find_package(Boost REQUIRED COMPONENTS iostreams program_options)
+find_package(Boost REQUIRED COMPONENTS iostreams)
 include_directories(${Boost_INCLUDE_DIRS})
 
 if(MULTITHREADING)

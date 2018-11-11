@@ -7,8 +7,6 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <boost/program_options.hpp>
-
 namespace dlink
 {
 	compiler_options::compiler_options(const compiler_options& options)
@@ -246,10 +244,10 @@ namespace dlink::details
 
 namespace dlink
 {
-	command_line_parser_result::command_line_parser_result(const std::map<command, std::pair<int, std::any>>& result)
+	command_line_parser_result::command_line_parser_result(const std::map<const command*, std::vector<std::any>>& result)
 		: result_(result)
 	{}
-	command_line_parser_result::command_line_parser_result(std::map<command, std::pair<int, std::any>>&& result) noexcept
+	command_line_parser_result::command_line_parser_result(std::map<const command*, std::vector<std::any>>&& result) noexcept
 		: result_(std::move(result))
 	{}
 	command_line_parser_result::command_line_parser_result(const command_line_parser_result& result)
@@ -270,59 +268,71 @@ namespace dlink
 		return *this;
 	}
 
-	int command_line_parser_result::count(const std::string_view& command) const
+	std::size_t command_line_parser_result::count(const std::string_view& command) const
 	{
-		std::map<dlink::command, std::pair<int, std::any>>::const_iterator iter;
+		std::map<const dlink::command*, std::vector<std::any>>::const_iterator iter;
+
 		std::string_view command_real;
+		std::string_view(dlink::command::*function)() const noexcept = nullptr;
 
 		if (command[1] == '-') // long
 		{
 			command_real = command.substr(2);
-			iter = std::find_if(result_.begin(), result_.end(),
-				[&command_real](const std::pair<dlink::command, std::pair<int, std::any>>& element)
-				{
-					return element.first.long_command() == command_real;
-				});
+			function = &dlink::command::long_command;
 		}
 		else // short
 		{
 			command_real = command.substr(1);
-			iter = std::find_if(result_.begin(), result_.end(),
-				[&command_real](const std::pair<dlink::command, std::pair<int, std::any>>& element)
-				{
-					return element.first.short_command() == command_real;
-				});
+			function = &dlink::command::short_command;
 		}
+
+		iter = std::find_if(result_.begin(), result_.end(),
+			[&command_real, &function](const std::pair<const dlink::command*, std::vector<std::any>>& element)
+			{
+				if (!element.first) return false;
+
+				return (element.first->*function)() == command_real;
+			});
 
 		if (iter == result_.end()) return 0;
-		else return iter->second.first;
+		else return iter->second.size();
 	}
-	std::optional<std::any> command_line_parser_result::argument(const std::string_view& command) const
+	std::vector<std::any> command_line_parser_result::argument(const std::string_view& command) const
 	{
-		std::map<dlink::command, std::pair<int, std::any>>::const_iterator iter;
+		std::map<const dlink::command*, std::vector<std::any>>::const_iterator iter;
+
 		std::string_view command_real;
+		std::string_view(dlink::command::*function)() const noexcept = nullptr;
 
 		if (command[1] == '-') // long
 		{
 			command_real = command.substr(2);
-			iter = std::find_if(result_.begin(), result_.end(),
-				[&command_real](const std::pair<dlink::command, std::pair<int, std::any>>& element)
-				{
-					return element.first.long_command() == command_real;
-				});
+			function = &dlink::command::long_command;
 		}
 		else // short
 		{
 			command_real = command.substr(1);
-			iter = std::find_if(result_.begin(), result_.end(),
-				[&command_real](const std::pair<dlink::command, std::pair<int, std::any>>& element)
-				{
-					return element.first.short_command() == command_real;
-				});
+			function = &dlink::command::short_command;
 		}
 
-		if (iter == result_.end()) return std::nullopt;
-		else return iter->second.second;
+		iter = std::find_if(result_.begin(), result_.end(),
+			[&command_real, &function](const std::pair<const dlink::command*, std::vector<std::any>>& element)
+			{
+				if (!element.first) return false;
+
+				return (element.first->*function)() == command_real;
+			});
+
+		if (iter == result_.end()) return {};
+		else return iter->second;
+	}
+	std::vector<std::any> command_line_parser_result::non_command() const
+	{
+		std::map<const command*, std::vector<std::any>>::const_iterator iter
+			= result_.find(nullptr);
+
+		if (iter != result_.end()) return iter->second;
+		else return {};
 	}
 }
 
@@ -447,6 +457,88 @@ namespace dlink
 	{
 		commands_.emplace_back();
 	}
+	command_line_parser_result command_line_parser::parse(int argc, char** argv) const
+	{
+		std::map<const command*, std::vector<std::any>> result;
+
+		for (int i = 1; i < argc; ++i)
+		{
+			std::string_view command = argv[i];
+
+			if (command[0] == '-')
+			{
+				if (command.size() == 1)
+					throw std::string("Error: invalid command format.");
+
+				const dlink::command* matched_command_info = nullptr;
+				std::string_view(dlink::command::*function)() const noexcept = nullptr;
+
+				if (command[1] == '-')
+				{
+					if (command.size() == 2)
+						throw std::string("Error: invalid command format.");
+
+					command.remove_prefix(2);
+					function = &dlink::command::long_command;
+				}
+				else
+				{
+					command.remove_prefix(1);
+					function = &dlink::command::short_command;
+				}
+
+				for (const auto& section : commands_)
+				{
+					for (const auto& command_info : section)
+					{
+						if ((command_info.*function)() == command)
+						{
+							matched_command_info = &command_info;
+							goto br;
+						}
+					}
+				}
+
+				if (function == &dlink::command::long_command)
+					throw std::string("Error: unknown command '--") + std::string(command) + "'.";
+				else
+					throw std::string("Error: unknown command '-") + std::string(command) + "'.";
+
+			br:
+				if (matched_command_info->parameter() != command_parameter::none)
+				{
+					if (++i >= argc || argv[i][0] == '-')
+						throw std::string("Error: no argument for '" + std::string(command) + "'.");
+
+					const std::string argument = argv[i];
+
+					switch (matched_command_info->parameter())
+					{
+					case command_parameter::string:
+						result[matched_command_info].push_back(argument);
+						break;
+
+					case command_parameter::integer:
+						result[matched_command_info].push_back(std::stoi(argument));
+						break;
+					}
+				}
+				else
+				{
+					result[matched_command_info].emplace_back();
+				}
+			}
+			else
+			{
+				if (!accept_non_command)
+					throw std::string("Error: '" + std::string(command) + "' isn't a command.");
+
+				result[nullptr].emplace_back(std::string(command));
+			}
+		}
+
+		return std::move(result);
+	}
 }
 
 namespace dlink
@@ -464,7 +556,6 @@ namespace dlink
 			return false;
 		}
 
-		namespace po = boost::program_options;
 		options.clear();
 
 		command_line_parser parser;
@@ -480,57 +571,60 @@ namespace dlink
 			(",finput-encoding", "Set the input encoding.", command_parameter::string);
 		parser.accept_non_command = true;
 
-		stream << parser;
-
-		/*try
+		try
 		{
-			po::variables_map map;
-			po::store(po::command_line_parser(argc, argv).
-				options(description).positional(p).run(), map);
-			po::notify(map);
+			const command_line_parser_result result = parser.parse(argc, argv);
 			
-			//
-			// Parse
-			//
-			// Generic
-			if (map.count("help"))
+			// Check
+			if (result.count("--help"))
 			{
 				options.help(true);
 			}
-			if (map.count("version"))
+			if (result.count("--version"))
 			{
 				options.version(true);
 			}
 
-			// Config
-#ifdef DLINK_MULTITHREADING
-			if (map.count("jobs"))
-			{
-				const std::int32_t count =
-					std::clamp(map["jobs"].as<std::int32_t>(), 0, compiler_options::max_count_of_threads);
+			std::string input_encoding_temp;
 
+			std::size_t temp = 0;
+
+#ifdef DLINK_MULTITHREADING
+			temp = result.count("-j");
+			if (temp)
+			{
+				if (temp >= 2)
+				{
+					stream << "Error: '-j' was used more than once.\n\n";
+					return false;
+				}
+
+				const std::int32_t count = std::clamp(std::any_cast<int>(result.argument("-j").front()), 0, compiler_options::max_count_of_threads);
 				options.count_of_threads(count);
 			}
 #endif
-			if (map.count("output"))
+			temp = result.count("-o");
+			if (temp)
 			{
-				options.output_file(map["output"].as<std::string>());
-			}
-			if (map.count("input-file"))
-			{
-				std::vector<std::string> files = map["input-file"].as<std::vector<std::string>>();
-				
-				for (const std::string& file : files)
+				if (temp >= 2)
 				{
-					options.add_input(file);
+					stream << "Error: '-o' was used more than once.\n\n";
+					return false;
 				}
+
+				options.output_file(std::any_cast<std::string>(result.argument("-o").front()));
 			}
 
-			// Flag
-			std::string input_encoding_temp;
-			if (map.count("input-encoding"))
+			temp = result.count("-finput-encoding");
+			if (temp)
 			{
-				std::string encoding = map["input-encoding"].as<std::string>();
+				if (temp >= 2)
+				{
+					stream << "Error: '-finput-encoding' was used more than once.\n\n";
+					return false;
+				}
+
+				std::string encoding = std::any_cast<std::string>(result.argument("-finput-encoding").front());
 				std::transform(encoding.begin(), encoding.end(), encoding.begin(), ::tolower);
 
 				if (encoding == "utf8" || encoding == "utf-8" || encoding == "u8")
@@ -538,7 +632,7 @@ namespace dlink
 					options.input_encoding(encoding::utf8);
 				}
 				else if (encoding == "utf16" || encoding == "utf-16" || encoding == "u16" ||
-						 encoding == "utf16le" || encoding == "utf-16le" || encoding == "u16le")
+					encoding == "utf16le" || encoding == "utf-16le" || encoding == "u16le")
 				{
 					options.input_encoding(encoding::utf16);
 				}
@@ -559,16 +653,19 @@ namespace dlink
 				{
 					input_encoding_temp = encoding;
 				}
-			}*/
+			}
 
-			//
+			const std::vector<std::any> input = result.non_command();
+			for (const std::any& file : input)
+			{
+				options.add_input(std::any_cast<std::string>(file));
+			}
+
 			// Run
-			//
-			// Generic
-			/*if (options.help())
+			if (options.help())
 			{
 				stream << "Usage: " << argv[0] << " [options...] files...\n";
-				stream << visible << '\n';
+				stream << parser;
 
 				return false;
 			}
@@ -583,12 +680,11 @@ namespace dlink
 				return false;
 			}
 
-			// Config
 			if (options.input_files().size() != 0)
 			{
 				const std::vector<std::string>::const_iterator duplicate_iter =
 					std::unique(const_cast<std::vector<std::string>&>(options.input_files()).begin(),
-								const_cast<std::vector<std::string>&>(options.input_files()).end());
+						const_cast<std::vector<std::string>&>(options.input_files()).end());
 
 				if (duplicate_iter != options.input_files().end())
 				{
@@ -604,7 +700,6 @@ namespace dlink
 				return false;
 			}
 
-			// Flag
 			if (!input_encoding_temp.empty())
 			{
 				stream << "Error: the argument ('" << input_encoding_temp << "') for option '--input-encoding' is invalid";
@@ -627,15 +722,14 @@ namespace dlink
 				}
 
 				return false;
-			}*/
+			}
 
 			return true;
-		/*}
-		catch (const po::error& e)
+		}
+		catch (const std::string& error)
 		{
-			stream << "Error: " << e.what() << ".\n\n";
-			
+			stream << error << "\n\n";
 			return false;
-		}*/
+		}
 	}
 }
