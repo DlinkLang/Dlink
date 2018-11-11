@@ -273,26 +273,25 @@ namespace dlink
 				{
 					++length;
 				}
-				else if (!post_literal_pos && !is_valid_digit && !std::isdigit(next_c) && length == 1)
+				else if (!post_literal_pos && !is_valid_digit)
 				{
-					token_type = dlink::token_type::integer_dec;
-
-					if (!post_literal_pos)
+					if (std::isdigit(next_c))
 					{
-						post_literal_pos = length;
-					}
-					post_literal_length++;
-				}
-				else if (!post_literal_pos && !is_valid_digit && std::isdigit(next_c))
-				{
-					error = true;
+						error = true;
 
-					const std::size_t pos = static_cast<std::size_t>(data.line_stream.tellg());
-					data.metadata.messages().push_back(std::make_shared<error_message>(
-						2001, "Invalid digit '"s + next_c + "' in octal literal.",
-						generate_line_col(data.source.path(), data.line_line, pos),
-						generate_source(data.line, data.line_line, pos, 1)
-						));
+						const std::size_t pos = static_cast<std::size_t>(data.line_stream.tellg());
+						data.metadata.messages().push_back(std::make_shared<error_message>(
+							2001, "Invalid digit '"s + next_c + "' in octal literal.",
+							generate_line_col(data.source.path(), data.line_line, pos),
+							generate_source(data.line, data.line_line, pos, 1)
+							));
+					}
+					else
+					{
+						token_type = dlink::token_type::integer_dec;
+						post_literal_pos = length;
+						post_literal_length++;
+					}
 				}
 				else
 				{
@@ -316,17 +315,6 @@ namespace dlink
 			if (!post_literal_pos && is_valid_digit)
 			{
 				++length;
-			}
-			else if (!post_literal_pos && !is_valid_digit)
-			{
-				error = true;
-
-				const std::size_t pos = static_cast<std::size_t>(data.line_stream.tellg());
-				data.metadata.messages().push_back(std::make_shared<error_message>(
-					2002, "Invalid digit '"s + next_c + "' in decimal literal.",
-					generate_line_col(data.source.path(), data.line_line, pos),
-					generate_source(data.line, data.line_line, pos, 1)
-					));
 			}
 			else
 			{
@@ -408,7 +396,6 @@ namespace dlink
 
 		dlink::token_type token_type = base == 2 ? dlink::token_type::integer_bin : dlink::token_type::integer_hex;
 		std::string_view prefix;
-		std::string_view postfix;
 
 		char next_c;
 		bool error = false;
@@ -423,14 +410,22 @@ namespace dlink
 			}
 			else if (!post_literal_pos && !is_valid_digit)
 			{
-				error = true;
+				if (base == 16 || !std::isdigit(next_c))
+				{
+					post_literal_pos = length;
+					post_literal_length++;
+				}
+				else
+				{
+					error = true;
 
-				const std::size_t pos = static_cast<std::size_t>(data.line_stream.tellg());
-				data.metadata.messages().push_back(std::make_shared<error_message>(
-					error_id_invalid_digit(), "Invalid digit '"s + next_c + "' in " + base_string() + " literal.",
-					generate_line_col(data.source.path(), data.line_line, pos),
-					generate_source(data.line, data.line_line, pos, 1)
-					));
+					const std::size_t pos = static_cast<std::size_t>(data.line_stream.tellg());
+					data.metadata.messages().push_back(std::make_shared<error_message>(
+						error_id_invalid_digit(), "Invalid digit '"s + next_c + "' in " + base_string() + " literal.",
+						generate_line_col(data.source.path(), data.line_line, pos),
+						generate_source(data.line, data.line_line, pos, 1)
+						));
+				}
 			}
 			else
 			{
@@ -441,7 +436,7 @@ namespace dlink
 				post_literal_length++;
 			}
 		}
-
+		
 		if (length == 2 && !error)
 		{
 			data.metadata.messages().push_back(std::make_shared<error_message>(
@@ -454,7 +449,8 @@ namespace dlink
 		}
 		else if (!error)
 		{
-			data.tokens.emplace_back(data.line.substr(c_pos, length), token_type, data.line_line, c_pos, prefix, postfix);
+			data.tokens.emplace_back(data.line.substr(c_pos, length), token_type, data.line_line, c_pos, prefix,
+				data.line.substr(post_literal_pos, post_literal_length));
 			return true;
 		}
 		else
