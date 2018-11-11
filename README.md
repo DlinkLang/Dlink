@@ -7,6 +7,7 @@
 ## 라이브러리 의존성
 이미 레포지토리에 포함되어 있으므로 설치를 위한 추가적인 작업이 필요하지 않습니다.
 - [UTF8-CPP](https://github.com/nemtrif/utfcpp): Version 2.3.5
+- [JSON for Modern C++](https://github.com/nlohmann/json): Version 3.4.0
 
 ## 라이선스
 ```
