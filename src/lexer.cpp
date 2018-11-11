@@ -179,7 +179,64 @@ namespace dlink
 		if (source.state() != source_state::decoded)
 			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::decoded' when 'static bool dlink::lexer::lex_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
 		
-		using namespace std::string_literals;
+		dlink::tokens tokens;
+
+		using memstream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
+
+		memstream stream(const_cast<char*>(source.codes().c_str()), source.codes().length());
+		std::size_t line = 0;
+		std::string_view current_line;
+
+		bool multiline_comment = false; // TODO
+
+		while (getline(stream, source.codes().c_str(), current_line))
+		{
+			++line;
+
+			const std::size_t length = current_line.size();
+			memstream line_stream(current_line.data(), length);
+			
+			std::size_t hm_length = 0;
+			char next_c;
+
+			while (!line_stream.eof())
+			{
+				const std::size_t offset = static_cast<std::size_t>(line_stream.tellg());
+
+				if (is_whitespace(line_stream, next_c))
+				{
+					if (hm_length)
+					{
+						const std::size_t hm_offset = offset - hm_length;
+						tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset);
+						hm_length = 0;
+					}
+				}
+				else if (is_special_character(next_c))
+				{
+					if (hm_length)
+					{
+						const std::size_t hm_offset = offset - hm_length;
+						tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset);
+						hm_length = 0;
+					}
+
+					tokens.emplace_back(current_line.substr(offset, 1), token_type::none_sc, line, offset);
+				}
+				else
+				{
+					++hm_length;
+				}
+			}
+
+			if (hm_length)
+			{
+				const std::size_t hm_offset = length - hm_length;
+				tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset);
+			}
+		}
+
+		/*using namespace std::string_literals;
 		using memorystream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
 		
 		std::size_t line = 0;
@@ -215,9 +272,11 @@ namespace dlink
 			}
 		}
 
-#undef make_internal_lexing_data
+#undef make_internal_lexing_data*/
 
-		if (ok)
+		return false;
+
+		/*if (ok)
 		{
 			source.tokens(std::move(tokens));
 			return true;
@@ -225,7 +284,7 @@ namespace dlink
 		else
 		{
 			return false;
-		}
+		}*/
 	}
 	bool lexer::lex_number_(internal_lexing_data_ data)
 	{

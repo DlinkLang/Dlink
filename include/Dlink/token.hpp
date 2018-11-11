@@ -14,6 +14,8 @@ namespace dlink
 	enum class token_type
 	{
 		none,
+		none_sc,				// Special character
+		none_hm,				// Has meaning
 		eof,
 
 		identifier,
