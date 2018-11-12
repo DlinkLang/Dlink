@@ -4,6 +4,10 @@
 ## Dlink 표준안
 [이곳](https://dlinklang.github.io/standard/)을 참조하십시오. 출시되지 않은 최신 표준안을 확인하려면 [이곳](https://github.com/DlinkLang/Dlink-Standard)을 참조하십시오.
 
+## 주요 문서
+모든 문서 목록은 [이곳](https://github.com/DlinkLang/Dlink/wiki)에서 확인하실 수 있습니다.
+- [컴파일러 오류 메세지](https://github.com/DlinkLang/Dlink/wiki/%EC%BB%B4%ED%8C%8C%EC%9D%BC%EB%9F%AC-%EC%98%A4%EB%A5%98-%EB%A9%94%EC%84%B8%EC%A7%80)
+
 ## 라이브러리 의존성
 이미 레포지토리에 포함되어 있으므로 설치를 위한 추가적인 작업이 필요하지 않습니다.
 - [UTF8-CPP](https://github.com/nemtrif/utfcpp): Version 2.3.5
