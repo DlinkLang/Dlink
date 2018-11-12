@@ -221,9 +221,35 @@ namespace dlink
 						hm_length = 0;
 					}
 
-					tokens.emplace_back(current_line.substr(offset, 1), token_type::none_sc, line, offset);
+					if (!multiline_comment && next_c == '/')
+					{
+						line_stream.get(next_c);
+						if (line_stream.good() && next_c == '*')
+						{
+							multiline_comment = true;
+						}
+						else if (next_c == '/')
+						{
+							break;
+						}
+						else goto add;
+					}
+					else if (multiline_comment && next_c == '*')
+					{
+						line_stream.get(next_c);
+						if (line_stream.good() && next_c == '/')
+						{
+							multiline_comment = false;
+						}
+						else goto add;
+					}
+					else
+					{
+					add:
+						tokens.emplace_back(current_line.substr(offset, 1), token_type::none_sc, line, offset);
+					}
 				}
-				else
+				else if (!multiline_comment)
 				{
 					++hm_length;
 				}
