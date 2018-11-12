@@ -54,6 +54,12 @@ namespace dlink
 		vector(Iterator_ first, Iterator_ last, const Allocator_& allocator = Allocator_())
 			: data_(first, last, allocator)
 		{}
+		vector(const data_type_& vector)
+			: data_(vector)
+		{}
+		vector(data_type_&& vector)
+			: data_(std::move(vector))
+		{}
 		vector(const my_& vector)
 			: data_(vector.data_)
 		{}

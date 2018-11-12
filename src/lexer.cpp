@@ -180,7 +180,25 @@ namespace dlink
 			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::decoded' when 'static bool dlink::lexer::lex_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
 		
 		std::vector<token> tokens;
-		lex_preprocess_(source, tokens);
+		if (!lex_preprocess_(source, metadata, tokens)) return false;
+
+		for (std::size_t i = 0; i < tokens.size(); ++i)
+		{
+			token& cur_token = tokens[i];
+			const token_type cur_token_type = cur_token.type();
+
+			if (cur_token_type == token_type::none_sc)
+			{
+				// TODO
+			}
+			else if (cur_token_type == token_type::none_hm)
+			{
+				// TODO
+			}
+		}
+
+		source.tokens(std::move(tokens));
+		return true;
 
 		/*using namespace std::string_literals;
 		using memorystream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
@@ -219,21 +237,9 @@ namespace dlink
 		}
 
 #undef make_internal_lexing_data*/
-
-		return false;
-
-		/*if (ok)
-		{
-			source.tokens(std::move(tokens));
-			return true;
-		}
-		else
-		{
-			return false;
-		}*/
 	}
 
-	void lexer::lex_preprocess_(source& source, std::vector<token>& tokens)
+	bool lexer::lex_preprocess_(source& source, compiler_metadata& metadata, std::vector<token>& tokens)
 	{
 		using memstream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
 
@@ -252,6 +258,9 @@ namespace dlink
 
 			std::size_t hm_length = 0;
 			char next_c;
+			
+			bool string = false;
+			bool character = false;
 
 			while (!line_stream.eof())
 			{
@@ -268,7 +277,7 @@ namespace dlink
 				}
 				else if (is_special_character(next_c))
 				{
-					if (hm_length)
+					if (hm_length && !string && !character)
 					{
 						const std::size_t hm_offset = offset - hm_length;
 						tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset);
@@ -297,10 +306,59 @@ namespace dlink
 						}
 						else goto add;
 					}
+					else if (!string && !character)
+					{
+						if (next_c == '"')
+						{
+							hm_length = 1;
+							string = true;
+						}
+						else if (next_c == '\'')
+						{
+							hm_length = 1;
+							character = true;
+						}
+						else goto add;
+					}
+					else if (string && !character)
+					{
+						if (next_c == '"')
+						{
+							tokens.emplace_back(current_line.substr(offset - hm_length, hm_length + 1), token_type::string, line, offset - hm_length);
+							hm_length = 0;
+							string = false;
+						}
+						else if (next_c == '\\')
+						{
+							hm_length += 2;
+						}
+						else goto add;
+					}
+					else if (character && !string)
+					{
+						if (next_c == '\'')
+						{
+							tokens.emplace_back(current_line.substr(offset - hm_length, hm_length + 1), token_type::character, line, offset - hm_length);
+							hm_length = 0;
+							character = false;
+						}
+						else if (next_c == '\\')
+						{
+							hm_length += 2;
+						}
+						else goto add;
+					}
 					else
 					{
 					add:
-						tokens.emplace_back(current_line.substr(offset, 1), token_type::none_sc, line, offset);
+						if ((string && next_c == '\'') || (character && next_c == '"'))
+						{
+							++hm_length;
+						}
+						else
+						{
+							tokens.emplace_back(current_line.substr(offset, 1), token_type::none_sc, line, offset);
+						}
 					}
 				}
 				else if (!multiline_comment)
@@ -315,6 +373,8 @@ namespace dlink
 				tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset);
 			}
 		}
+
+		return true;
 	}
 	bool lexer::lex_number_(internal_lexing_data_ data)
 	{

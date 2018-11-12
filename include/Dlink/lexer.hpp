@@ -48,7 +48,7 @@ namespace dlink
 		static bool lex_source(source& source, compiler_metadata& metadata);
 
 	private:
-		static void lex_preprocess_(source& source, std::vector<token>& tokens);
+		static bool lex_preprocess_(source& source, compiler_metadata& metadata, std::vector<token>& tokens);
 		static bool lex_number_(internal_lexing_data_ data);
 		static bool lex_number_with_base_(internal_lexing_data_ data, int base);
 	};
