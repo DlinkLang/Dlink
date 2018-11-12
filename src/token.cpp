@@ -230,16 +230,16 @@ namespace dlink
 
 namespace dlink
 {
-	token::token(const std::string_view& data, token_type type, std::size_t line, std::size_t col)
-		: data_(data), type_(type), line_(line), col_(col)
+	token::token(const std::string_view& data, token_type type, std::size_t line, std::size_t col, const std::string_view& line_data)
+		: data_(data), type_(type), line_(line), col_(col), line_data_(line_data)
 	{}
-	token::token(const std::string_view& data, token_type type, std::size_t line, std::size_t col,
+	token::token(const std::string_view& data, token_type type, std::size_t line, std::size_t col, const std::string_view& line_data,
 		const std::string_view& prefix_literal, const std::string_view& postfix_literal)
-		: data_(data), type_(type), line_(line), col_(col),
+		: data_(data), type_(type), line_(line), col_(col), line_data_(line_data),
 		prefix_literal_(prefix_literal), postfix_literal_(postfix_literal)
 	{}
 	token::token(const token& token)
-		: data_(token.data_), type_(token.type_), line_(token.line_), col_(token.col_),
+		: data_(token.data_), type_(token.type_), line_(token.line_), col_(token.col_), line_data_(token.line_data_),
 		prefix_literal_(token.prefix_literal_), postfix_literal_(token.postfix_literal_)
 	{}
 
@@ -313,6 +313,14 @@ namespace dlink
 	void token::data(const std::string_view& new_data) noexcept
 	{
 		data_ = new_data;
+	}
+	const std::string_view& token::line_data() const noexcept
+	{
+		return line_data_;
+	}
+	void token::line_data(const std::string_view& new_line_data) noexcept
+	{
+		line_data_ = new_line_data;
 	}
 	const std::string_view& token::prefix_literal() const noexcept
 	{

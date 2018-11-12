@@ -19,15 +19,10 @@ namespace dlink
 	private:
 		struct internal_lexing_data_
 		{
-			std::istream& line_stream;
-			std::string_view& line;
-			std::size_t line_length;
-			std::size_t line_line;
-			char c;
-
 			dlink::source& source;
 			compiler_metadata& metadata;
-			dlink::tokens& tokens;
+			std::vector<token>& tokens;
+			token& token;
 		};
 
 	public:

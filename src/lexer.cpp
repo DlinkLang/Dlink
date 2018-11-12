@@ -182,6 +182,8 @@ namespace dlink
 		std::vector<token> tokens;
 		if (!lex_preprocess_(source, metadata, tokens)) return false;
 
+		bool ok = true;
+
 		for (std::size_t i = 0; i < tokens.size(); ++i)
 		{
 			token& cur_token = tokens[i];
@@ -189,54 +191,52 @@ namespace dlink
 
 			if (cur_token_type == token_type::none_sc)
 			{
+				using namespace std::string_literals;
+
+				const char sc = cur_token.data()[0];
+
+				switch (sc)
+				{
+				case '`':
+				case '#':
+				{
+					const std::size_t line = cur_token.line();
+					const std::size_t col = cur_token.col() + 1;
+
+					metadata.messages().push_back(std::make_shared<error_message>(
+						2006, "'"s + sc + "' is an invalid token.",
+						generate_line_col(source.path(), line, col),
+						generate_source(cur_token.line_data(), line, col, 1)
+						));
+
+					ok = false;
+					break;
+				}
+
 				// TODO
+				}
 			}
 			else if (cur_token_type == token_type::none_hm)
 			{
-				// TODO
-			}
-		}
+#define make_internal_lexing_data() (internal_lexing_data_{ source, metadata, tokens, cur_token })
 
-		source.tokens(std::move(tokens));
-		return true;
+				const char first_c = cur_token.data()[0];
 
-		/*using namespace std::string_literals;
-		using memorystream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
-		
-		std::size_t line = 0;
-
-		memorystream stream(
-			const_cast<char*>(source.codes().c_str()), source.codes().length()
-		);
-		std::string_view current_line;
-
-		dlink::tokens tokens;
-
-		bool multiline_comment = false;
-		bool ok = true;
-
-#define make_internal_lexing_data() (internal_lexing_data_{ line_stream, current_line, length, line, c, source, metadata, tokens })
-
-		while (getline(stream, source.codes().c_str(), current_line))
-		{
-			++line;
-			memorystream line_stream(current_line.data(), current_line.length());
-
-			const std::size_t length = current_line.size();
-
-			while (!line_stream.eof())
-			{
-				const char c = static_cast<char>(line_stream.get());
-				const std::size_t i = static_cast<std::size_t>(line_stream.tellg()) - 1;
-
-				if (std::isdigit(c))
+				if (std::isdigit(first_c))
 				{
 					ok = ok && lex_number_(make_internal_lexing_data());
 				}
+
+#undef make_internal_lexing_data
 			}
 		}
 
-#undef make_internal_lexing_data*/
+		if (ok)
+		{
+			source.tokens(std::move(tokens));
+		}
+
+		return ok;
 	}
 
 	bool lexer::lex_preprocess_(source& source, compiler_metadata& metadata, std::vector<token>& tokens)
@@ -271,7 +271,7 @@ namespace dlink
 					if (hm_length)
 					{
 						const std::size_t hm_offset = offset - hm_length;
-						tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset);
+						tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset, current_line);
 						hm_length = 0;
 					}
 				}
@@ -280,7 +280,7 @@ namespace dlink
 					if (hm_length && !string && !character)
 					{
 						const std::size_t hm_offset = offset - hm_length;
-						tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset);
+						tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset, current_line);
 						hm_length = 0;
 					}
 
@@ -324,7 +324,7 @@ namespace dlink
 					{
 						if (next_c == '"')
 						{
-							tokens.emplace_back(current_line.substr(offset - hm_length, hm_length + 1), token_type::string, line, offset - hm_length);
+							tokens.emplace_back(current_line.substr(offset - hm_length, hm_length + 1), token_type::string, line, offset - hm_length, current_line);
 							hm_length = 0;
 							string = false;
 						}
@@ -338,7 +338,7 @@ namespace dlink
 					{
 						if (next_c == '\'')
 						{
-							tokens.emplace_back(current_line.substr(offset - hm_length, hm_length + 1), token_type::character, line, offset - hm_length);
+							tokens.emplace_back(current_line.substr(offset - hm_length, hm_length + 1), token_type::character, line, offset - hm_length, current_line);
 							hm_length = 0;
 							character = false;
 						}
@@ -357,7 +357,7 @@ namespace dlink
 						}
 						else
 						{
-							tokens.emplace_back(current_line.substr(offset, 1), token_type::none_sc, line, offset);
+							tokens.emplace_back(current_line.substr(offset, 1), token_type::none_sc, line, offset, current_line);
 						}
 					}
 				}
@@ -370,7 +370,7 @@ namespace dlink
 			if (hm_length)
 			{
 				const std::size_t hm_offset = length - hm_length;
-				tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset);
+				tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset, current_line);
 			}
 		}
 
@@ -380,28 +380,19 @@ namespace dlink
 	{
 		using namespace std::string_literals;
 
-		const std::size_t c_pos = static_cast<std::size_t>(data.line_stream.tellg()) - 1;
-		std::size_t length = 1;
-		std::size_t post_literal_pos = 0;
-		std::size_t post_literal_length = 0;
+		const std::string_view& token_data = data.token.data();
+		const std::size_t token_line = data.token.line();
+		const std::size_t token_col = data.token.col() + 1;
 
-		dlink::token_type token_type = dlink::token_type::none;
-		std::string_view prefix;
-
-		bool error = false;
-
-		if (data.c == '0')
+		if (token_data[0] == '0')
 		{
-			char next_c;
-			const bool ws = is_whitespace(data.line_stream, next_c);
-
-			if (ws)
+			if (token_data.size() == 1)
 			{
-				token_type = dlink::token_type::integer_dec;
-				goto exit;
+				data.token.type(token_type::integer_dec);
+				return true;
 			}
 
-			switch (next_c)
+			switch (token_data[1])
 			{
 			case 'B':
 			case 'b':
@@ -412,86 +403,62 @@ namespace dlink
 				return lex_number_with_base_(data, 16);
 			}
 
-			token_type = dlink::token_type::integer_oct;
+			data.token.type(token_type::integer_oct);
 
-			do
+			for (std::size_t i = 1; i < token_data.size(); ++i)
 			{
-				const bool is_valid_digit = (next_c >= '0' && next_c <= '7') || next_c == '_';
+				const char c = token_data[i];
 
-				if (!post_literal_pos && is_valid_digit)
+				const bool is_underbar = c == '_';
+				const bool is_valid_digit = (c >= '0' && c <= '7') || is_underbar;
+
+				if (!is_valid_digit)
 				{
-					++length;
-				}
-				else if (!post_literal_pos && !is_valid_digit)
-				{
-					if (std::isdigit(next_c))
+					if (std::isdigit(c))
 					{
-						error = true;
-
-						const std::size_t pos = static_cast<std::size_t>(data.line_stream.tellg());
 						data.metadata.messages().push_back(std::make_shared<error_message>(
-							2001, "Invalid digit '"s + next_c + "' in octal literal.",
-							generate_line_col(data.source.path(), data.line_line, pos),
-							generate_source(data.line, data.line_line, pos, 1)
+							2001, "Invalid digit '"s + c + "' in octal literal.",
+							generate_line_col(data.source.path(), token_line, i + 1),
+							generate_source(data.token.line_data(), token_line, i + 1, 1)
 							));
+						return false;
 					}
 					else
 					{
-						token_type = dlink::token_type::integer_dec;
-						post_literal_pos = length;
-						post_literal_length++;
+						data.token.postfix_literal(token_data.substr(i));
+						data.token.data(token_data.substr(0, i));
+						return true;
 					}
 				}
-				else
-				{
-					if (!post_literal_pos)
-					{
-						post_literal_pos = length;
-					}
-					post_literal_length++;
-				}
-			} while (!is_whitespace(data.line_stream, next_c));
-
-			goto exit;
-		}
-		
-		char next_c;
-
-		while (!is_whitespace(data.line_stream, next_c))
-		{
-			const bool is_valid_digit = std::isdigit(next_c) || next_c == '_';
-
-			if (!post_literal_pos && is_valid_digit)
-			{
-				++length;
 			}
-			else
-			{
-				if (!post_literal_pos)
-				{
-					post_literal_pos = length;
-				}
-				post_literal_length++;
-			}
-		}
-
-		token_type = dlink::token_type::integer_dec;
-
-	exit:
-		if (!error)
-		{
-			data.tokens.emplace_back(data.line.substr(c_pos, length), token_type, data.line_line, c_pos, prefix,
-				data.line.substr(post_literal_pos, post_literal_length));
-			return true;
 		}
 		else
 		{
-			return false;
+			data.token.type(token_type::integer_dec);
+
+			for (std::size_t i = 1; i < token_data.size(); ++i)
+			{
+				const char c = token_data[i];
+
+				const bool is_underbar = c == '_';
+				const bool is_valid_digit = std::isdigit(c) || is_underbar;
+
+				if (!is_valid_digit)
+				{
+					data.token.postfix_literal(token_data.substr(i));
+					data.token.data(token_data.substr(0, i));
+					return true;
+				}
+			}
 		}
+
+		return true;
 	}
 	bool lexer::lex_number_with_base_(internal_lexing_data_ data, int base)
 	{
 		using namespace std::string_literals;
+
+		data.token.type(base == 2 ? token_type::integer_bin : token_type::integer_hex);
 
 		const auto is_digit = [base](char character)
 		{
@@ -538,73 +505,48 @@ namespace dlink
 			}
 		};
 
-		const std::size_t c_pos = static_cast<std::size_t>(data.line_stream.tellg()) - 2;
-		std::size_t length = 2;
-		std::size_t post_literal_pos = 0;
-		std::size_t post_literal_length = 0;
+		const std::size_t token_line = data.token.line();
+		const std::size_t token_col = data.token.col() + 1;
 
-		dlink::token_type token_type = base == 2 ? dlink::token_type::integer_bin : dlink::token_type::integer_hex;
-		std::string_view prefix;
-
-		char next_c;
-		bool error = false;
-
-		while (!is_whitespace(data.line_stream, next_c))
-		{
-			const bool is_valid_digit = is_digit(next_c) || next_c == '_';
-
-			if (!post_literal_pos && is_valid_digit)
-			{
-				++length;
-			}
-			else if (!post_literal_pos && !is_valid_digit)
-			{
-				if (base == 16 || !std::isdigit(next_c))
-				{
-					post_literal_pos = length;
-					post_literal_length++;
-				}
-				else
-				{
-					error = true;
-
-					const std::size_t pos = static_cast<std::size_t>(data.line_stream.tellg());
-					data.metadata.messages().push_back(std::make_shared<error_message>(
-						error_id_invalid_digit(), "Invalid digit '"s + next_c + "' in " + base_string() + " literal.",
-						generate_line_col(data.source.path(), data.line_line, pos),
-						generate_source(data.line, data.line_line, pos, 1)
-						));
-				}
-			}
-			else
-			{
-				if (!post_literal_pos)
-				{
-					post_literal_pos = length;
-				}
-				post_literal_length++;
-			}
-		}
-		
-		if (length == 2 && !error)
+		if (data.token.data().size() == 2)
 		{
 			data.metadata.messages().push_back(std::make_shared<error_message>(
 				error_id_invalid_format(), "Invalid "s + base_string() + " literal.",
-				generate_line_col(data.source.path(), data.line_line, c_pos + 1),
-				generate_source(data.line, data.line_line, c_pos + 1, length)
+				generate_line_col(data.source.path(), token_line, token_col),
+				generate_source(data.token.line_data(), token_line, token_col, 2)
 				));
+			return false;
+		}
 
-			return false;
-		}
-		else if (!error)
+		const std::string_view token_data = data.token.data().substr(2);
+		
+		for (std::size_t i = 0; i < token_data.size(); ++i)
 		{
-			data.tokens.emplace_back(data.line.substr(c_pos, length), token_type, data.line_line, c_pos, prefix,
-				data.line.substr(post_literal_pos, post_literal_length));
-			return true;
+			const char c = token_data[i];
+
+			const bool is_underbar = c == '_';
+			const bool is_valid_digit = is_digit(c) || is_underbar;
+
+			if (!is_valid_digit)
+			{
+				if (base == 2 && std::isdigit(c))
+				{
+					data.metadata.messages().push_back(std::make_shared<error_message>(
+						error_id_invalid_digit(), "Invalid digit '"s + c + "' in " + base_string() + " literal.",
+						generate_line_col(data.source.path(), token_line, i + 3),
+						generate_source(data.token.line_data(), token_line, i + 3, 1)
+						));
+					return false;
+				}
+				else
+				{
+					data.token.postfix_literal(token_data.substr(i));
+					data.token.data(token_data.substr(0, i));
+					return true;
+				}
+			}
 		}
-		else
-		{
-			return false;
-		}
+
+		return true;
 	}
 }
