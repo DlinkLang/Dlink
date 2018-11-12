@@ -179,15 +179,69 @@ namespace dlink
 		if (source.state() != source_state::decoded)
 			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::decoded' when 'static bool dlink::lexer::lex_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
 		
+		std::vector<token> tokens;
+		lex_preprocess_(source, tokens);
+
+		/*using namespace std::string_literals;
+		using memorystream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
+		
+		std::size_t line = 0;
+
+		memorystream stream(
+			const_cast<char*>(source.codes().c_str()), source.codes().length()
+		);
+		std::string_view current_line;
+
 		dlink::tokens tokens;
 
+		bool multiline_comment = false;
+		bool ok = true;
+
+#define make_internal_lexing_data() (internal_lexing_data_{ line_stream, current_line, length, line, c, source, metadata, tokens })
+
+		while (getline(stream, source.codes().c_str(), current_line))
+		{
+			++line;
+			memorystream line_stream(current_line.data(), current_line.length());
+
+			const std::size_t length = current_line.size();
+
+			while (!line_stream.eof())
+			{
+				const char c = static_cast<char>(line_stream.get());
+				const std::size_t i = static_cast<std::size_t>(line_stream.tellg()) - 1;
+
+				if (std::isdigit(c))
+				{
+					ok = ok && lex_number_(make_internal_lexing_data());
+				}
+			}
+		}
+
+#undef make_internal_lexing_data*/
+
+		return false;
+
+		/*if (ok)
+		{
+			source.tokens(std::move(tokens));
+			return true;
+		}
+		else
+		{
+			return false;
+		}*/
+	}
+
+	void lexer::lex_preprocess_(source& source, std::vector<token>& tokens)
+	{
 		using memstream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
 
 		memstream stream(const_cast<char*>(source.codes().c_str()), source.codes().length());
 		std::size_t line = 0;
 		std::string_view current_line;
 
-		bool multiline_comment = false; // TODO
+		bool multiline_comment = false;
 
 		while (getline(stream, source.codes().c_str(), current_line))
 		{
@@ -195,7 +249,7 @@ namespace dlink
 
 			const std::size_t length = current_line.size();
 			memstream line_stream(current_line.data(), length);
-			
+
 			std::size_t hm_length = 0;
 			char next_c;
 
@@ -261,56 +315,6 @@ namespace dlink
 				tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset);
 			}
 		}
-
-		/*using namespace std::string_literals;
-		using memorystream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
-		
-		std::size_t line = 0;
-
-		memorystream stream(
-			const_cast<char*>(source.codes().c_str()), source.codes().length()
-		);
-		std::string_view current_line;
-
-		dlink::tokens tokens;
-
-		bool multiline_comment = false;
-		bool ok = true;
-
-#define make_internal_lexing_data() (internal_lexing_data_{ line_stream, current_line, length, line, c, source, metadata, tokens })
-
-		while (getline(stream, source.codes().c_str(), current_line))
-		{
-			++line;
-			memorystream line_stream(current_line.data(), current_line.length());
-
-			const std::size_t length = current_line.size();
-
-			while (!line_stream.eof())
-			{
-				const char c = static_cast<char>(line_stream.get());
-				const std::size_t i = static_cast<std::size_t>(line_stream.tellg()) - 1;
-
-				if (std::isdigit(c))
-				{
-					ok = ok && lex_number_(make_internal_lexing_data());
-				}
-			}
-		}
-
-#undef make_internal_lexing_data*/
-
-		return false;
-
-		/*if (ok)
-		{
-			source.tokens(std::move(tokens));
-			return true;
-		}
-		else
-		{
-			return false;
-		}*/
 	}
 	bool lexer::lex_number_(internal_lexing_data_ data)
 	{
