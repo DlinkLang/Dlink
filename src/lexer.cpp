@@ -246,8 +246,11 @@ namespace dlink
 		memstream stream(const_cast<char*>(source.codes().c_str()), source.codes().length());
 		std::size_t line = 0;
 		std::string_view current_line;
+		bool ok = true;
 
 		bool multiline_comment = false;
+		std::size_t multiline_comment_line = 0, multiline_comment_col = 0;
+		std::string_view multiline_comment_line_data;
 
 		while (getline(stream, source.codes().c_str(), current_line))
 		{
@@ -261,6 +264,7 @@ namespace dlink
 			
 			bool string = false;
 			bool character = false;
+			std::size_t string_or_character_line = 0, string_or_character_col = 0;
 
 			while (!line_stream.eof())
 			{
@@ -290,6 +294,9 @@ namespace dlink
 						if (line_stream.good() && next_c == '*')
 						{
 							multiline_comment = true;
+							multiline_comment_line = line;
+							multiline_comment_col = offset + 1;
+							multiline_comment_line_data = current_line;
 						}
 						else if (next_c == '/')
 						{
@@ -312,11 +319,15 @@ namespace dlink
 						{
 							hm_length = 1;
 							string = true;
+							string_or_character_line = line;
+							string_or_character_col = offset + 1;
 						}
 						else if (next_c == '\'')
 						{
 							hm_length = 1;
 							character = true;
+							string_or_character_line = line;
+							string_or_character_col = offset + 1;
 						}
 						else goto add;
 					}
@@ -367,14 +378,47 @@ namespace dlink
 				}
 			}
 
-			if (hm_length)
+			if (character)
+			{
+				using namespace std::string_literals;
+
+				metadata.messages().push_back(std::make_shared<error_message>(
+					2008, "Unexpected EOL found in character literal.",
+					generate_line_col(source.path(), string_or_character_line, string_or_character_col),
+					generate_source(current_line, string_or_character_line, string_or_character_col, 1)
+					));
+				ok = false;
+			}
+			else if (string)
+			{
+				using namespace std::string_literals;
+
+				metadata.messages().push_back(std::make_shared<error_message>(
+					2009, "Unexpected EOL found in string literal.",
+					generate_line_col(source.path(), string_or_character_line, string_or_character_col),
+					generate_source(current_line, string_or_character_line, string_or_character_col, 1)
+					));
+				ok = false;
+			}
+			else if (hm_length)
 			{
 				const std::size_t hm_offset = length - hm_length;
 				tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset, current_line);
 			}
 		}
 
-		return true;
+		if (multiline_comment)
+		{
+			using namespace std::string_literals;
+
+			metadata.messages().push_back(std::make_shared<error_message>(
+				2007, "Unexpected EOF found in comment.",
+				generate_line_col(source.path(), multiline_comment_line, multiline_comment_col),
+				generate_source(multiline_comment_line_data, multiline_comment_line, multiline_comment_col, 2)
+				));
+			ok = false;
+		}
+		return ok;
 	}
 	bool lexer::lex_number_(internal_lexing_data_ data)
 	{
