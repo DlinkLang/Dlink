@@ -36,37 +36,63 @@ namespace dlink
 		static const std::uint8_t utf32be_bom[] = { 0x00, 0x00, 0xFE, 0xFF };
 
 		std::uint8_t bom_buffer[4];
-		stream.read(reinterpret_cast<char*>(bom_buffer), 3);
+		const std::streamsize read_count = stream.readsome(reinterpret_cast<char*>(bom_buffer), 4);
 
-		if (std::equal(bom_buffer, bom_buffer + 3, utf8_bom))
+		switch (read_count)
 		{
-			return encoding::utf8;
+		case 2:
+		{
+			if (std::equal(bom_buffer, bom_buffer + 2, utf16_bom))
+			{
+				return encoding::utf16;
+			}
+			else if (std::equal(bom_buffer, bom_buffer + 2, utf16be_bom))
+			{
+				return encoding::utf16be;
+			}
+			else
+			{
+				stream.seekg(-2, std::ios::cur);
+				return encoding::none;
+			}
 		}
 
-		stream.read(reinterpret_cast<char*>(bom_buffer) + 3, 1);
-
-		if (std::equal(bom_buffer, bom_buffer + 4, utf32_bom))
+		case 3:
 		{
-			return encoding::utf32;
-		}
-		else if (std::equal(bom_buffer, bom_buffer + 4, utf32be_bom))
-		{
-			return encoding::utf32be;
-		}
-
-		stream.seekg(-2, std::ios::cur);
-
-		if (std::equal(bom_buffer, bom_buffer + 2, utf16_bom))
-		{
-			return encoding::utf16;
-		}
-		else if (std::equal(bom_buffer, bom_buffer + 2, utf16be_bom))
-		{
-			return encoding::utf16be;
+			if (std::equal(bom_buffer, bom_buffer + 3, utf8_bom))
+			{
+				return encoding::utf8;
+			}
+			else
+			{
+				stream.seekg(-3, std::ios::cur);
+				return encoding::none;
+			}
 		}
 
-		stream.seekg(-2, std::ios::cur);
-		return encoding::none;
+		case 4:
+		{
+			if (std::equal(bom_buffer, bom_buffer + 4, utf32_bom))
+			{
+				return encoding::utf32;
+			}
+			else if (std::equal(bom_buffer, bom_buffer + 4, utf32be_bom))
+			{
+				return encoding::utf32be;
+			}
+			else
+			{
+				stream.seekg(-4, std::ios::cur);
+				return encoding::none;
+			}
+		}
+
+		default:
+		{
+			stream.seekg(static_cast<std::streamoff>(-read_count), std::ios::cur);
+			return encoding::none;
+		}
+		}
 	}
 
 	int get_character_length(char first_byte)
