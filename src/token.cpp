@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <map>
+#include <unordered_map>
 #include <utility>
 
 namespace dlink
@@ -225,6 +226,200 @@ namespace dlink
 	{
 		return std::find(special_characters.begin(), special_characters.end(), character) !=
 			special_characters.end();
+	}
+	bool is_valid_special_character(char character) noexcept
+	{
+		switch (character)
+		{
+		case '`':
+		case '@':
+		case '#':
+		case '\\':
+		case '\'':
+		case '"':
+			return false;
+
+		default:
+			return true;
+		}
+	}
+	token_type to_token_type(char valid_special_character) noexcept
+	{
+		static std::unordered_map<char, token_type> map =
+		{
+#define MAP_TOKEN(sc, type) { sc, token_type::type }
+			MAP_TOKEN('~', bit_not),
+			MAP_TOKEN('!', exclamation),
+			MAP_TOKEN('$', dollar),
+			MAP_TOKEN('%', modulo),
+			MAP_TOKEN('^', bit_xor),
+			MAP_TOKEN('&', bit_and),
+			MAP_TOKEN('*', multiply),
+			MAP_TOKEN('(', paren_left),
+			MAP_TOKEN(')', paren_right),
+			MAP_TOKEN('-', minus),
+			MAP_TOKEN('+', plus),
+			MAP_TOKEN('=', assign),
+			MAP_TOKEN('|', bit_or),
+			MAP_TOKEN('{', brace_left),
+			MAP_TOKEN('[', big_paren_left),
+			MAP_TOKEN('}', brace_right),
+			MAP_TOKEN(']', big_paren_right),
+			MAP_TOKEN(':', colon),
+			MAP_TOKEN(';', semicolon),
+			MAP_TOKEN('<', less),
+			MAP_TOKEN(',', comma),
+			MAP_TOKEN('>', greater),
+			MAP_TOKEN('.', dot),
+			MAP_TOKEN('?', question),
+			MAP_TOKEN('/', divide),
+#undef MAP_TOKEN
+		};
+
+		return map[valid_special_character];
+	}
+	bool is_single_special_character(char valid_special_character) noexcept
+	{
+		switch (valid_special_character)
+		{
+		case '~':
+		case '$':
+		case '(':
+		case ')':
+		case '{':
+		case '[':
+		case '}':
+		case ']':
+		case ':':
+		case ';':
+		case ',':
+		case '.':
+		case '?':
+			return true;
+
+		default:
+			return false;
+		}
+	}
+	token_type complex_token_type(token_type type, char valid_special_character) noexcept
+	{
+		switch (type)
+		{
+		case token_type::exclamation:
+			switch (valid_special_character)
+			{
+			case '=': return token_type::equal_not;
+			default: return type;
+			}
+
+		case token_type::modulo:
+			switch (valid_special_character)
+			{
+			case '=': return token_type::modulo_assign;
+			default: return type;
+			}
+
+		case token_type::bit_xor:
+			switch (valid_special_character)
+			{
+			case '=': return token_type::bit_xor_assign;
+			default: return type;
+			}
+
+		case token_type::bit_and:
+			switch (valid_special_character)
+			{
+			case '=': return token_type::bit_and_assign;
+			case '&': return token_type::logic_and;
+			default: return type;
+			}
+
+		case token_type::multiply:
+			switch (valid_special_character)
+			{
+			case '=': return token_type::multiply_assign;
+			case '*': return token_type::exp;
+			default: return type;
+			}
+
+		case token_type::minus:
+			switch (valid_special_character)
+			{
+			case '-': return token_type::decrement;
+			case '=': return token_type::minus_assign;
+			case '>': return token_type::rightwards_arrow;
+			default: return type;
+			}
+
+		case token_type::plus:
+			switch (valid_special_character)
+			{
+			case '+': return token_type::increment;
+			case '=': return token_type::plus_assign;
+			case '>': return token_type::rightwards_double_arrow;
+			default: return type;
+			}
+
+		case token_type::assign:
+			switch (valid_special_character)
+			{
+			case '=': return token_type::equal;
+			default: return type;
+			}
+
+		case token_type::bit_or:
+			switch (valid_special_character)
+			{
+			case '=': return token_type::bit_or_assign;
+			case '|': return token_type::logic_or;
+			default: return type;
+			}
+
+		case token_type::less:
+			switch (valid_special_character)
+			{
+			case '<': return token_type::bit_shift_left;
+			default: return type;
+			}
+
+		case token_type::greater:
+			switch (valid_special_character)
+			{
+			case '>': return token_type::bit_shift_right;
+			default: return type;
+			}
+
+		case token_type::divide:
+			switch (valid_special_character)
+			{
+			case '=': return token_type::divide_assign;
+			default: return type;
+			}
+
+		case token_type::exp:
+			switch (valid_special_character)
+			{
+			case '=': return token_type::exp_assign;
+			default: return type;
+			}
+
+		case token_type::bit_shift_left:
+			switch (valid_special_character)
+			{
+			case '=': return token_type::bit_shift_left_assign;
+			default: return type;
+			}
+
+		case token_type::bit_shift_right:
+			switch (valid_special_character)
+			{
+			case '=': return token_type::bit_shift_right_assign;
+			default: return type;
+			}
+
+		default:
+			return type;
+		}
 	}
 }
 

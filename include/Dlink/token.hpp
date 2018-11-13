@@ -182,7 +182,11 @@ namespace dlink
 
 	extern const std::vector<char> special_characters;
 	bool is_special_character(char character);
-
+	bool is_valid_special_character(char character) noexcept;
+	token_type to_token_type(char valid_special_character) noexcept;
+	bool is_single_special_character(char valid_special_character) noexcept;
+	token_type complex_token_type(token_type type, char valid_special_character) noexcept;
+	
 	class token final
 	{
 	public:
@@ -195,7 +199,6 @@ namespace dlink
 
 	public:
 		token& operator=(const token& token);
-		token& operator=(token&& token) noexcept = delete;
 		bool operator==(const token& token) const = delete;
 		bool operator!=(const token& token) const = delete;
 

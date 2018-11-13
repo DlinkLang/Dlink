@@ -189,34 +189,7 @@ namespace dlink
 			token& cur_token = tokens[i];
 			const token_type cur_token_type = cur_token.type();
 
-			if (cur_token_type == token_type::none_sc)
-			{
-				using namespace std::string_literals;
-
-				const char sc = cur_token.data()[0];
-
-				switch (sc)
-				{
-				case '`':
-				case '#':
-				{
-					const std::size_t line = cur_token.line();
-					const std::size_t col = cur_token.col() + 1;
-
-					metadata.messages().push_back(std::make_shared<error_message>(
-						2006, "'"s + sc + "' is an invalid token.",
-						generate_line_col(source.path(), line, col),
-						generate_source(cur_token.line_data(), line, col, 1)
-						));
-
-					ok = false;
-					break;
-				}
-
-				// TODO
-				}
-			}
-			else if (cur_token_type == token_type::none_hm)
+			if (cur_token_type == token_type::none_hm)
 			{
 #define make_internal_lexing_data() (internal_lexing_data_{ source, metadata, tokens, cur_token })
 
@@ -280,7 +253,7 @@ namespace dlink
 					}
 				}
 				else if (is_special_character(next_c))
-				{
+				{					
 					if (hm_length && !string && !character)
 					{
 						const std::size_t hm_offset = offset - hm_length;
@@ -366,9 +339,53 @@ namespace dlink
 						{
 							++hm_length;
 						}
+						else if (!is_valid_special_character(next_c))
+						{
+							using namespace std::string_literals;
+
+							metadata.messages().push_back(std::make_shared<error_message>(
+								2006, "'"s + next_c + "' is an invalid token.",
+								generate_line_col(source.path(), line, offset + 1),
+								generate_source(current_line, line, offset + 1, 1)
+								));
+							ok = false;
+						}
 						else
 						{
-							tokens.emplace_back(current_line.substr(offset, 1), token_type::none_sc, line, offset, current_line);
+							token& added_token = tokens.emplace_back(current_line.substr(offset, 1), to_token_type(next_c), line, offset, current_line);
+							if (!is_single_special_character(next_c))
+							{
+								static constexpr int max_depth = 3;
+								token_type old_type = added_token.type();
+
+								for (int i = 1; i < max_depth; ++i)
+								{
+									line_stream.read(&next_c, 1);
+									if (line_stream.good())
+									{
+										if (is_valid_special_character(next_c))
+										{
+											added_token.type(complex_token_type(added_token.type(), next_c));
+
+											if (const token_type new_type = added_token.type(); new_type != old_type)
+											{
+												old_type = new_type;
+												added_token.data(current_line.substr(offset, i + 1));
+											}
+											else
+											{
+												line_stream.seekg(-1, std::ios::cur);
+												break;
+											}
+										}
+										else
+										{
+											line_stream.seekg(-1, std::ios::cur);
+											break;
+										}
+									}
+								}
+							}
 						}
 					}
 				}
