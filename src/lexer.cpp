@@ -384,6 +384,7 @@ namespace dlink
 											break;
 										}
 									}
+									else break;
 								}
 							}
 						}
