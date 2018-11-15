@@ -45,13 +45,13 @@ namespace dlink
 	}
 	bool compilation_pipeline::lex_singlethread()
 	{
-		return decoder::decode_singlethread(metadata_, sources_);
+		return lexer::lex_singlethread(metadata_, sources_);
 	}
 	
 	bool compilation_pipeline::compile_until_lexing()
 	{
 #ifdef DLINK_MULTITHREADING
-		auto compile_multithread = [&](std::size_t begin, std::size_t end) -> bool
+		auto compile_multithread = [&](std::size_t begin, std::size_t end) mutable -> bool
 		{
 			bool result = true;
 

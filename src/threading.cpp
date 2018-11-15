@@ -22,17 +22,8 @@ namespace dlink
 
 		count_of_threads = std::min(count_of_threads, input_files_size);
 
-		std::size_t average = input_files_size / count_of_threads;
-		std::size_t remainder = input_files_size % count_of_threads;
-
-		if (remainder != 0)
-		{
-			const std::size_t remainder_average = remainder / count_of_threads;
-			const std::size_t remainder_remainder = remainder % count_of_threads;
-
-			average += remainder_average;
-			remainder = remainder_remainder;
-		}
+		const std::size_t average = input_files_size / count_of_threads;
+		const std::size_t remainder = input_files_size % count_of_threads;
 
 		return { average, remainder, count_of_threads };
 	}

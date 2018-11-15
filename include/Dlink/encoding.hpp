@@ -45,7 +45,7 @@ namespace dlink
 
 	std::string_view get_eol_character(dlink::eol eol);
 	std::string to_string(dlink::eol eol);
-	bool is_eol(std::istream& stream);
+	bool is_eol(std::istream& stream, int& char_size);
 
 	enum class whitespace
 	{
@@ -87,6 +87,8 @@ namespace dlink
 	std::string to_string(dlink::whitespace whitespace);
 	bool is_whitespace(std::istream& stream);
 	bool is_whitespace(std::istream& stream, char& output);
+
+	bool isdigit(char c) noexcept;
 }
 
 #endif

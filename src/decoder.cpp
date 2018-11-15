@@ -34,12 +34,14 @@ namespace dlink
 			return result;
 		};
 
+		const std::size_t offset = results.size();
+
 		for (const std::string& path : metadata.options().input_files())
 		{
 			results.emplace_back(path);
 		}
 
-		return parallel(decode_multithread, get_threading_info(metadata), results.size());
+		return parallel(decode_multithread, get_threading_info(metadata), offset);
 #else
 		return decode_singlethread(metadata, results);
 #endif

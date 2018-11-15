@@ -122,12 +122,13 @@ namespace dlink
 			}
 
 			std::size_t length = 0;
+			int char_size;
 			const std::size_t pos = static_cast<std::size_t>(stream.tellg());
 			
-			while (!is_eol(stream))
+			while (!is_eol(stream, char_size))
 			{
-				++length;
-				stream.seekg(1, std::ios::cur);
+				length += char_size;
+				stream.seekg(char_size, std::ios::cur);
 			}
 
 			if (length == 0)
@@ -195,9 +196,14 @@ namespace dlink
 
 				const char first_c = cur_token.data()[0];
 
-				if (std::isdigit(first_c))
+				if (isdigit(first_c))
 				{
 					ok = ok && lex_number_(make_internal_lexing_data());
+				}
+				// TODO
+				else
+				{
+					cur_token.type(token_type::identifier);
 				}
 
 #undef make_internal_lexing_data
@@ -238,6 +244,7 @@ namespace dlink
 
 			std::size_t hm_length = 0;
 			char next_c;
+			int next_c_size;
 			bool is_prev_whitespace = false;
 
 			bool string = false;
@@ -248,7 +255,7 @@ namespace dlink
 			{
 				const std::size_t offset = static_cast<std::size_t>(line_stream.tellg());
 
-				if (is_whitespace(line_stream, next_c))
+				if (const bool isw = is_whitespace(line_stream, next_c); next_c_size = get_character_length(next_c), isw)
 				{
 					if (hm_length)
 					{
@@ -348,7 +355,7 @@ namespace dlink
 					add:
 						if ((string && next_c == '\'') || (character && next_c == '"'))
 						{
-							++hm_length;
+							hm_length += next_c_size;
 						}
 						else if (!is_valid_special_character(next_c))
 						{
@@ -403,7 +410,7 @@ namespace dlink
 				}
 				else if (!multiline_comment)
 				{
-					++hm_length;
+					hm_length += next_c_size;
 				}
 			}
 
