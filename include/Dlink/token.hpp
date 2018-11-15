@@ -16,7 +16,7 @@ namespace dlink
 		none,
 		none_sc,				// Special character
 		none_hm,				// Has meaning
-		eof,
+		whitespace,
 
 		identifier,
 

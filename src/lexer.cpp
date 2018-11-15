@@ -191,7 +191,7 @@ namespace dlink
 
 			if (cur_token_type == token_type::none_hm)
 			{
-#define make_internal_lexing_data() (internal_lexing_data_{ source, metadata, tokens, cur_token })
+#define make_internal_lexing_data() (internal_lexing_data_{ source, metadata, tokens, cur_token, i })
 
 				const char first_c = cur_token.data()[0];
 
@@ -201,6 +201,10 @@ namespace dlink
 				}
 
 #undef make_internal_lexing_data
+			}
+			else if (cur_token_type == token_type::whitespace)
+			{
+				tokens.erase(tokens.begin() + i--);
 			}
 		}
 
@@ -234,7 +238,8 @@ namespace dlink
 
 			std::size_t hm_length = 0;
 			char next_c;
-			
+			bool is_prev_whitespace = false;
+
 			bool string = false;
 			bool character = false;
 			std::size_t string_or_character_line = 0, string_or_character_col = 0;
@@ -251,9 +256,15 @@ namespace dlink
 						tokens.emplace_back(current_line.substr(hm_offset, hm_length), token_type::none_hm, line, hm_offset, current_line);
 						hm_length = 0;
 					}
+
+					if (!is_prev_whitespace)
+					{
+						tokens.emplace_back(std::string_view(), token_type::whitespace, -1, -1, current_line);
+						is_prev_whitespace = true;
+					}
 				}
-				else if (is_special_character(next_c))
-				{					
+				else if (is_prev_whitespace = false, is_special_character(next_c))
+				{
 					if (hm_length && !string && !character)
 					{
 						const std::size_t hm_offset = offset - hm_length;
@@ -438,11 +449,11 @@ namespace dlink
 		}
 		return ok;
 	}
-	bool lexer::lex_number_(internal_lexing_data_ data)
+	bool lexer::lex_number_(internal_lexing_data_ data, bool cannot_sn)
 	{
 		using namespace std::string_literals;
 
-		const std::string_view& token_data = data.token.data();
+		const std::string_view token_data = data.token.data();
 		const std::size_t token_line = data.token.line();
 		const std::size_t token_col = data.token.col() + 1;
 
@@ -489,6 +500,12 @@ namespace dlink
 					{
 						data.token.postfix_literal(token_data.substr(i));
 						data.token.data(token_data.substr(0, i));
+						
+						if (data.token.data().size() == 1)
+						{
+							data.token.type(token_type::integer_dec);
+						}
+
 						return true;
 					}
 				}
@@ -497,6 +514,8 @@ namespace dlink
 		else
 		{
 			data.token.type(token_type::integer_dec);
+
+			bool e = false;
 
 			for (std::size_t i = 1; i < token_data.size(); ++i)
 			{
@@ -507,9 +526,68 @@ namespace dlink
 
 				if (!is_valid_digit)
 				{
-					data.token.postfix_literal(token_data.substr(i));
-					data.token.data(token_data.substr(0, i));
-					return true;
+					const bool is_e = c == 'e' || c == 'E';
+
+					if (!e && is_e && !cannot_sn)
+					{
+						e = true;
+					}
+					else
+					{
+						data.token.postfix_literal(token_data.substr(i));
+						data.token.data(token_data.substr(0, i));
+						return true;
+					}
+				}
+			}
+
+			if (const char last_c = data.token.data().back(); e && (last_c == 'e' || last_c == 'E'))
+			{
+				if (const std::size_t cur_token_index = data.token_index;
+					cur_token_index + 2 < data.tokens.size() && data.token.postfix_literal().size() == 0)
+				{
+					token& next_token = data.tokens[cur_token_index + 1];
+					token& next_next_token = data.tokens[cur_token_index + 2];
+
+					if (const token_type next_token_type = next_token.type(),
+										 next_next_token_type = next_next_token.type();
+						next_token_type == token_type::plus || next_token_type == token_type::minus)
+					{
+						std::size_t temp = cur_token_index + 2;
+
+						if (next_next_token_type != token_type::none_hm) goto invalid;
+						lex_number_(internal_lexing_data_{ data.source, data.metadata, data.tokens, next_next_token, temp }, true);
+
+						if (next_next_token.type() != token_type::integer_dec)
+						{
+							next_next_token.type(token_type::none_hm);
+						
+						invalid:
+							data.metadata.messages().push_back(std::make_shared<error_message>(
+								2010, "Invalid scientific notation format.",
+								generate_line_col(data.source.path(), token_line, data.token.col() + 1),
+								generate_source(data.token.line_data(), token_line, data.token.col() + 1, data.token.data().size() + next_next_token.data().size() + 1)
+								));
+							return false;
+						}
+						
+						data.token.data(std::string_view(data.token.data().data(), data.token.data().size() + next_next_token.data().size() + 1));
+						data.token.postfix_literal(next_next_token.postfix_literal());
+
+						data.tokens.erase(data.tokens.begin() + (cur_token_index + 1));
+						data.tokens.erase(data.tokens.begin() + (cur_token_index + 1));
+
+						data.token_index -= 2;
+					}
+					else goto not_sn;
+				}
+				else
+				{
+				not_sn:
+					const std::string_view cur_token_data = data.token.data();
+
+					data.token.postfix_literal(cur_token_data.substr(cur_token_data.size() - 1, 1));
+					data.token.data(cur_token_data.substr(0, cur_token_data.size() - 1));
 				}
 			}
 		}

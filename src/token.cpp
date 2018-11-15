@@ -14,7 +14,6 @@ namespace dlink
 		const std::map<token_type, std::string_view> token_map_ =
 		{
 			MAP_TOKEN(none),
-			MAP_TOKEN(eof),
 
 			MAP_TOKEN(identifier),
 
@@ -444,6 +443,7 @@ namespace dlink
 		type_ = token.type_;
 		line_ = token.line_;
 		col_ = token.col_;
+		line_data_ = token.line_data_;
 		prefix_literal_ = token.prefix_literal_;
 		postfix_literal_ = token.postfix_literal_;
 
@@ -456,6 +456,7 @@ namespace dlink
 		type_ = token_type::none;
 		line_ = 0;
 		col_ = 0;
+		line_data_ = "";
 		prefix_literal_ = "";
 		postfix_literal_ = "";
 	}
