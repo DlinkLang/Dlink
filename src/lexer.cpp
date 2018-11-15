@@ -200,10 +200,19 @@ namespace dlink
 				{
 					ok = ok && lex_number_(make_internal_lexing_data());
 				}
-				// TODO
 				else
 				{
-					cur_token.type(token_type::identifier);
+					const std::map<std::string_view, token_type>::const_iterator iter =
+						keywords.find(cur_token.data());
+
+					if (iter != keywords.end())
+					{
+						cur_token.type(iter->second);
+					}
+					else
+					{
+						cur_token.type(token_type::identifier);
+					}
 				}
 
 #undef make_internal_lexing_data
