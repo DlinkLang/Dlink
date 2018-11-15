@@ -217,6 +217,56 @@ namespace dlink
 
 #undef make_internal_lexing_data
 			}
+			else if (cur_token_type == token_type::dot)
+			{
+				if (i == 0) continue;
+				else if (i + 1 >= tokens.size()) continue;
+
+				token& prev_token = tokens[i - 1];
+				token& next_token = tokens[i + 1];
+
+				if (prev_token.type() != token_type::integer_dec) continue;
+				else if (next_token.type() != token_type::none_hm)
+				{
+					prev_token.type(token_type::decimal);
+					prev_token.data(std::string_view(prev_token.data().data(), prev_token.data().size() + 1));
+					tokens.erase(tokens.begin() + i--);
+
+					continue;
+				}
+
+				std::size_t temp = i + 1;
+				if (isdigit(next_token.data()[0]))
+				{
+					lex_number_(internal_lexing_data_{ source, metadata, tokens, next_token, temp }, true);
+
+					if (next_token.type() != token_type::integer_dec)
+					{
+						metadata.messages().push_back(std::make_shared<error_message>(
+							20011, "Invalid decimal literal format.",
+							generate_line_col(source.path(), prev_token.line(), prev_token.col() + 1),
+							generate_source(cur_token.line_data(), prev_token.line(), prev_token.col() + 1, prev_token.data().size() + 1)
+							));
+						ok = false;
+					}
+
+					prev_token.type(token_type::decimal);
+					prev_token.data(std::string_view(prev_token.data().data(), prev_token.data().size() + next_token.data().size() + 1));
+					prev_token.postfix_literal(next_token.postfix_literal());
+
+					tokens.erase(tokens.begin() + (i + 1));
+					tokens.erase(tokens.begin() + i--);
+				}
+				else
+				{
+					prev_token.type(token_type::decimal);
+					prev_token.data(std::string_view(prev_token.data().data(), prev_token.data().size() + 1));
+					prev_token.postfix_literal(next_token.data());
+
+					tokens.erase(tokens.begin() + (i + 1));
+					tokens.erase(tokens.begin() + i--);
+				}
+			}
 			else if (cur_token_type == token_type::whitespace)
 			{
 				tokens.erase(tokens.begin() + i--);
@@ -533,7 +583,7 @@ namespace dlink
 
 			bool e = false;
 
-			for (std::size_t i = 1; i < token_data.size(); ++i)
+			for (std::size_t i = 0; i < token_data.size(); ++i)
 			{
 				const char c = token_data[i];
 
