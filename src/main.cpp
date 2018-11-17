@@ -14,7 +14,7 @@ int main(int argc, char** argv)
 
 	dlink::compilation_pipeline pipeline(std::move(options));
 	
-	pipeline.compile_until_lexing();
+	pipeline.compile_until_lexing_singlethread();
 	pipeline.dump_messages();
 
 	std::ofstream temp("./dump.json");

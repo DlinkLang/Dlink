@@ -1,7 +1,21 @@
 #include <Dlink/preprocessor.hpp>
 
+#include <Dlink/encoding.hpp>
 #include <Dlink/exception.hpp>
-#include <Dlink/threading.hpp>
+#include <Dlink/utility.hpp>
+
+#include <cstddef>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/device/array.hpp>
+
+#ifdef DLINK_MULTITHREADING
+#	include <Dlink/threading.hpp>
+#endif
 
 namespace dlink
 {
@@ -38,11 +52,143 @@ namespace dlink
 	}
 	bool preprocessor::preprocess_source(source& source, compiler_metadata& metadata)
 	{
-		if (source.state() >= source_state::decoded)
+		if (source.state() < source_state::decoded)
 			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::decoded' or higher when 'static bool dlink::preprocessor::preprocess_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
 	
-		// TODO
+		using memstream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
 
-		return false;
+		std::vector<std::string> result;
+
+		memstream stream(const_cast<char*>(source.codes().c_str()), source.codes().length());
+		std::size_t line = 0;
+		std::string_view current_line;
+		bool ok = true;
+
+#define continue_with_append										\
+		{															\
+			if (ok)													\
+			{														\
+				result.emplace_back(current_line);					\
+				continue;											\
+			}														\
+		}
+
+		while (getline(stream, source.codes().c_str(), current_line))
+		{
+			++line;
+
+			const std::size_t length = current_line.size();
+			memstream line_stream(current_line.data(), length);
+
+			char next_c;
+
+			while (is_whitespace(line_stream, next_c));
+			if (line_stream.eof()) continue_with_append;
+			if (next_c != '#') continue;
+
+			const std::size_t offset = static_cast<std::size_t>(line_stream.tellg());
+			if (offset >= length)
+			{
+				metadata.messages().push_back(std::make_shared<error_message>(
+					1100, "Unexpected EOF found in preprocessor directive.",
+					generate_line_col(source.path(), line, offset),
+					generate_source(current_line, line, offset, 1)
+					));
+				ok = false;
+				continue;
+			}
+
+			const std::string_view other = current_line.substr(offset);
+			const std::size_t first_space_pos = other.find(' ');
+			const std::string_view type = other.substr(0, first_space_pos);
+			
+			bool loop_error = false;
+			std::size_t index = 0;
+
+			for (char c : type)
+			{
+				if (!isalpha(c))
+				{
+					metadata.messages().push_back(std::make_shared<error_message>(
+						1101, "Unexpected token found in preprocessor directive name.",
+						generate_line_col(source.path(), line, offset + index + 1),
+						generate_source(current_line, line, offset + index + 1, 1)
+						));
+					ok = false;
+					loop_error = true;
+				}
+
+				++index;
+			}
+
+			if (loop_error) continue;
+			loop_error = false;
+
+			if (type == "error")
+			{
+				if (first_space_pos == std::string_view::npos ||
+					first_space_pos == other.size() - 1)
+				{
+					metadata.messages().push_back(std::make_shared<error_message>(
+						1103, "Occurred due to #error.",
+						generate_line_col(source.path(), line, offset),
+						generate_source(current_line, line, offset, 6)
+						));
+				}
+				else
+				{
+					const std::string_view message = other.substr(first_space_pos + 1);
+
+					metadata.messages().push_back(std::make_shared<error_message>(
+						1104, "#error: " + std::string(message),
+						generate_line_col(source.path(), line, offset),
+						generate_source(current_line, line, offset, message.size() + 7)
+						));
+				}
+
+				ok = false;
+			}
+			else if (type == "warning")
+			{
+				if (first_space_pos == std::string_view::npos ||
+					first_space_pos == other.size() - 1)
+				{
+					metadata.messages().push_back(std::make_shared<warning_message>(
+						1100, "Occurred due to #warning.",
+						generate_line_col(source.path(), line, offset),
+						generate_source(current_line, line, offset, 8)
+						));
+				}
+				else
+				{
+					const std::string_view message = other.substr(first_space_pos + 1);
+
+					metadata.messages().push_back(std::make_shared<warning_message>(
+						1101, "#warning: " + std::string(message),
+						generate_line_col(source.path(), line, offset),
+						generate_source(current_line, line, offset, message.size() + 9)
+						));
+				}
+			}
+			else
+			{
+				metadata.messages().push_back(std::make_shared<error_message>(
+					1105, "Unknown preprocessor directive.",
+					generate_line_col(source.path(), line, offset),
+					generate_source(current_line, line, offset, type.size() + 1)
+					));
+
+				ok = false;
+			}
+		}
+
+#undef continue_with_append
+
+		if (ok)
+		{
+			source.preprocessed_codes(std::move(result));
+		}
+
+		return ok;
 	}
 }

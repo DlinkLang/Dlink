@@ -27,6 +27,7 @@ namespace dlink
 	class source final
 	{
 		friend class decoder;
+		friend class preprocessor;
 		friend class lexer;
 
 	public:
@@ -56,7 +57,7 @@ namespace dlink
 
 	public:
 		const std::string& codes() const noexcept;
-		const std::string& preprocessed_codes() const noexcept;
+		const std::vector<std::string>& preprocessed_codes() const noexcept;
 		const std::string& path() const noexcept;
 		const dlink::tokens& tokens() const noexcept;
 
@@ -64,12 +65,12 @@ namespace dlink
 
 	private:
 		void codes(std::string&& new_codes);
-		void preprocessed_codes(std::string&& new_preprocessed_codes);
+		void preprocessed_codes(std::vector<std::string>&& new_preprocessed_codes);
 		void tokens(dlink::tokens&& new_tokens);
 
 	private:
 		std::string codes_;
-		std::string preprocessed_codes_;
+		std::vector<std::string> preprocessed_codes_;
 		std::string path_;
 		dlink::tokens tokens_;
 

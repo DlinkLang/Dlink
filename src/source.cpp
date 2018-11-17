@@ -46,21 +46,21 @@ namespace dlink
 
 	bool source::decode(compiler_metadata& metadata)
 	{
-		if (state() >= source_state::initialized)
+		if (state() < source_state::initialized)
 			throw invalid_state("The state must be 'dlink::source_state::initialized' or higher when 'bool dlink::source::decode(dlink::compiler_metadata&)' method is called.");
 
 		return decoder::decode_source(*this, metadata);
 	}
 	bool dlink::source::preprocess(compiler_metadata& metadata)
 	{
-		if (state() >= source_state::decoded)
+		if (state() < source_state::decoded)
 			throw invalid_state("The state must be 'dlink::source_state::decoded' or higher when 'bool dlink::preprocess(dlink::compiler_metadata&)' method is called.");
 
 		return preprocessor::preprocess_source(*this, metadata);
 	}
 	bool source::lex(compiler_metadata& metadata)
 	{
-		if (state() >= source_state::preprocessed)
+		if (state() < source_state::preprocessed)
 			throw invalid_state("The state must be 'dlink::source_state::preprocessed' or higher when 'bool dlink::source::lex(dlink::compiler_metadata&)' method is called.");
 
 		return lexer::lex_source(*this, metadata);
@@ -132,7 +132,7 @@ namespace dlink
 
 		return codes_;
 	}
-	const std::string& source::preprocessed_codes() const noexcept
+	const std::vector<std::string>& source::preprocessed_codes() const noexcept
 	{
 #ifdef DLINK_MULTITHREADING
 		std::lock_guard<std::mutex> guard(preprocessed_codes_mutex_);
@@ -163,13 +163,13 @@ namespace dlink
 		codes_ = std::move(new_codes);
 		state_ = source_state::decoded;
 	}
-	void source::preprocessed_codes(std::string&& new_preprocessed_codes)
+	void source::preprocessed_codes(std::vector<std::string>&& new_preprocessed_codes)
 	{
 #ifdef DLINK_MULTITHREADING
 		std::lock_guard<std::mutex> guard(preprocessed_codes_mutex_);
 #endif
 
-		codes_ = std::move(new_preprocessed_codes);
+		preprocessed_codes_ = std::move(new_preprocessed_codes);
 		state_ = source_state::preprocessed;
 	}
 	void source::tokens(dlink::tokens&& new_tokens)

@@ -2,6 +2,7 @@
 
 #include <Dlink/encoding.hpp>
 #include <Dlink/exception.hpp>
+#include <Dlink/utility.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -111,39 +112,6 @@ namespace dlink
 
 namespace dlink
 {
-	namespace
-	{
-		bool getline(std::istream& stream, const char* org_string, std::string_view& output)
-		{
-			if (stream.eof())
-			{
-				output = "";
-				return false;
-			}
-
-			std::size_t length = 0;
-			int char_size;
-			const std::size_t pos = static_cast<std::size_t>(stream.tellg());
-			
-			while (!is_eol(stream, char_size))
-			{
-				length += char_size;
-				stream.seekg(char_size, std::ios::cur);
-			}
-
-			if (length == 0)
-			{
-				output = "";
-				return false;
-			}
-			else
-			{
-				output = std::string_view(org_string + pos, length);
-				return true;
-			}
-		}
-	}
-
 	bool lexer::lex(compiler_metadata& metadata, std::vector<source>& sources)
 	{
 #ifdef DLINK_MULTITHREADING
@@ -177,7 +145,7 @@ namespace dlink
 	}
 	bool lexer::lex_source(source& source, compiler_metadata& metadata)
 	{
-		if (source.state() >= source_state::preprocessed)
+		if (source.state() < source_state::preprocessed)
 			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::preprocessed' or higher when 'static bool dlink::lexer::lex_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
 		
 		std::vector<token> tokens;
@@ -285,27 +253,23 @@ namespace dlink
 	{
 		using memstream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
 
-		memstream stream(const_cast<char*>(source.preprocessed_codes().c_str()), source.preprocessed_codes().length());
 		std::size_t line = 0;
-		std::string_view current_line;
 		bool ok = true;
 
 		bool multiline_comment = false;
 		std::size_t multiline_comment_line = 0, multiline_comment_col = 0;
 		std::string_view multiline_comment_line_data;
 
-		while (getline(stream, source.preprocessed_codes().c_str(), current_line))
+		for (std::string_view current_line : source.preprocessed_codes())
 		{
-			++line;
-
 			const std::size_t length = current_line.size();
 			memstream line_stream(current_line.data(), length);
 
-			std::size_t hm_length = 0;
 			char next_c;
 			int next_c_size;
-			bool is_prev_whitespace = false;
+			std::size_t hm_length = 0;
 
+			bool is_prev_whitespace = false;
 			bool string = false;
 			bool character = false;
 			std::size_t string_or_character_line = 0, string_or_character_col = 0;
@@ -340,7 +304,7 @@ namespace dlink
 
 					if (!multiline_comment && next_c == '/')
 					{
-						line_stream.get(next_c);
+						line_stream.read(&next_c, 1);
 						if (line_stream.good() && next_c == '*')
 						{
 							multiline_comment = true;
@@ -356,7 +320,7 @@ namespace dlink
 					}
 					else if (multiline_comment && next_c == '*')
 					{
-						line_stream.get(next_c);
+						line_stream.read(&next_c, 1);
 						if (line_stream.good() && next_c == '/')
 						{
 							multiline_comment = false;
@@ -381,7 +345,7 @@ namespace dlink
 						}
 						else goto add;
 					}
-					else if (string && !character)
+					else if (string)
 					{
 						if (next_c == '"')
 						{
@@ -395,7 +359,7 @@ namespace dlink
 						}
 						else goto add;
 					}
-					else if (character && !string)
+					else if (character)
 					{
 						if (next_c == '\'')
 						{

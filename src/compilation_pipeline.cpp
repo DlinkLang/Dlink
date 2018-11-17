@@ -2,6 +2,7 @@
 
 #include <Dlink/decoder.hpp>
 #include <Dlink/lexer.hpp>
+#include <Dlink/preprocessor.hpp>
 
 #include <iostream>
 #include <utility>
@@ -39,6 +40,14 @@ namespace dlink
 	{
 		return decoder::decode_singlethread(metadata_, sources_);
 	}
+	bool compilation_pipeline::preprocess()
+	{
+		return preprocessor::preprocess(metadata_, sources_);
+	}
+	bool compilation_pipeline::preprocess_singlethread()
+	{
+		return preprocessor::preprocess_singlethread(metadata_, sources_);
+	}
 	bool compilation_pipeline::lex()
 	{
 		return lexer::lex(metadata_, sources_);
@@ -48,6 +57,42 @@ namespace dlink
 		return lexer::lex_singlethread(metadata_, sources_);
 	}
 	
+	bool compilation_pipeline::compile_until_preprocessing()
+	{
+#ifdef DLINK_MULTITHREADING
+		auto compile_multithread = [&](std::size_t begin, std::size_t end) mutable -> bool
+		{
+			bool result = true;
+
+			for (std::size_t i = begin; i < end; ++i)
+			{
+				result = result && sources_[i].compile_until_preprocessing(metadata_);
+			}
+
+			return result;
+		};
+
+		for (const std::string& path : metadata_.options().input_files())
+		{
+			sources_.emplace_back(path);
+		}
+
+		return parallel(compile_multithread, get_threading_info(metadata_));
+#else
+		return compile_until_preprocessing_singlethread();
+#endif
+	}
+	bool compilation_pipeline::compile_until_preprocessing_singlethread()
+	{
+		bool result = decode_singlethread();
+
+		if (result)
+		{
+			result = result && preprocess_singlethread();
+		}
+
+		return result;
+	}
 	bool compilation_pipeline::compile_until_lexing()
 	{
 #ifdef DLINK_MULTITHREADING
@@ -75,7 +120,7 @@ namespace dlink
 	}
 	bool compilation_pipeline::compile_until_lexing_singlethread()
 	{
-		bool result = decode_singlethread();
+		bool result = compile_until_preprocessing_singlethread();
 
 		if (result)
 		{

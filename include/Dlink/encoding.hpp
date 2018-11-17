@@ -89,6 +89,7 @@ namespace dlink
 	bool is_whitespace(std::istream& stream, char& output);
 
 	bool isdigit(char c) noexcept;
+	bool isalpha(char c) noexcept;
 }
 
 #endif

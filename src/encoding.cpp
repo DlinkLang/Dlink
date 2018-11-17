@@ -35,13 +35,13 @@ namespace dlink
 		static const std::uint8_t utf16be_bom[] = { 0xFE, 0xFF };
 		static const std::uint8_t utf32_bom[] = { 0xFF, 0xFE, 0x00, 0x00 };
 		static const std::uint8_t utf32be_bom[] = { 0x00, 0x00, 0xFE, 0xFF };
-
-		const std::streamoff gcount = stream.gcount();
+		
+		const std::streampos pos = stream.tellg();
 
 		std::uint8_t bom_buffer[4];
 		stream.read(reinterpret_cast<char*>(bom_buffer), 4);
 
-		const std::streamsize read_count = stream.gcount() - gcount;
+		const std::streamsize read_count = stream.gcount();
 		if (read_count == 0)
 		{
 			return encoding::none;
@@ -60,24 +60,28 @@ namespace dlink
 		}
 		if (read_count >= 3 && std::equal(bom_buffer, bom_buffer + 3, utf8_bom))
 		{
-			stream.seekg(-(read_count - 3), std::ios::cur);
+			stream.clear();
+			stream.seekg(pos + static_cast<std::streamoff>(3), std::ios::beg);
 			return encoding::utf8;
 		}
 		if (read_count >= 2)
 		{
 			if (std::equal(bom_buffer, bom_buffer + 2, utf16_bom))
 			{
-				stream.seekg(-(read_count - 2), std::ios::cur);
+				stream.clear();
+				stream.seekg(pos + static_cast<std::streamoff>(2), std::ios::beg);
 				return encoding::utf16;
 			}
 			else if (std::equal(bom_buffer, bom_buffer + 2, utf16be_bom))
 			{
-				stream.seekg(-(read_count - 2), std::ios::cur);
+				stream.clear();
+				stream.seekg(pos + static_cast<std::streamoff>(2), std::ios::beg);
 				return encoding::utf16be;
 			}
 		}
 
-		stream.seekg(-read_count, std::ios::cur);
+		stream.clear();
+		stream.seekg(pos, std::ios::beg);
 		return encoding::none;
 	}
 
@@ -449,5 +453,10 @@ namespace dlink
 	{
 		if (static_cast<unsigned char>(c) > 0x7F) return false;
 		else return std::isdigit(c);
+	}
+	bool isalpha(char c) noexcept
+	{
+		if (static_cast<unsigned char>(c) > 0x7F) return false;
+		else return std::isalpha(c);
 	}
 }

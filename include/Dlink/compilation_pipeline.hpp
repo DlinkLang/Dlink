@@ -33,9 +33,13 @@ namespace dlink
 
 		bool decode();
 		bool decode_singlethread();
+		bool preprocess();
+		bool preprocess_singlethread();
 		bool lex();
 		bool lex_singlethread();
 
+		bool compile_until_preprocessing();
+		bool compile_until_preprocessing_singlethread();
 		bool compile_until_lexing();
 		bool compile_until_lexing_singlethread();
 
