@@ -3,6 +3,7 @@
 #include <Dlink/decoder.hpp>
 #include <Dlink/exception.hpp>
 #include <Dlink/lexer.hpp>
+#include <Dlink/preprocessor.hpp>
 
 #include <utility>
 
@@ -45,22 +46,40 @@ namespace dlink
 
 	bool source::decode(compiler_metadata& metadata)
 	{
-		if (state() != source_state::initialized)
-			throw invalid_state("The state must be 'dlink::source_state::initialized' when 'bool dlink::source::decode(void)' method is called.");
+		if (state() >= source_state::initialized)
+			throw invalid_state("The state must be 'dlink::source_state::initialized' or higher when 'bool dlink::source::decode(dlink::compiler_metadata&)' method is called.");
 
 		return decoder::decode_source(*this, metadata);
 	}
+	bool dlink::source::preprocess(compiler_metadata& metadata)
+	{
+		if (state() >= source_state::decoded)
+			throw invalid_state("The state must be 'dlink::source_state::decoded' or higher when 'bool dlink::preprocess(dlink::compiler_metadata&)' method is called.");
+
+		return preprocessor::preprocess_source(*this, metadata);
+	}
 	bool source::lex(compiler_metadata& metadata)
 	{
-		if (state() != source_state::decoded)
-			throw invalid_state("The state must be 'dlink::source_state::decoded' when 'bool dlink::source::lex(void)' method is called.");
+		if (state() >= source_state::preprocessed)
+			throw invalid_state("The state must be 'dlink::source_state::preprocessed' or higher when 'bool dlink::source::lex(dlink::compiler_metadata&)' method is called.");
 
 		return lexer::lex_source(*this, metadata);
 	}
 
-	bool source::compile_until_lexing(compiler_metadata& metadata)
+	bool source::compile_until_preprocessing(compiler_metadata& metadata)
 	{
 		bool result = decode(metadata);
+
+		if (result)
+		{
+			result = preprocess(metadata);
+		}
+
+		return result;
+	}
+	bool source::compile_until_lexing(compiler_metadata& metadata)
+	{
+		bool result = compile_until_preprocessing(metadata);
 
 		if (result)
 		{
@@ -75,9 +94,11 @@ namespace dlink
 		nlohmann::json object;
 		object["path"] = path_;
 
-		const int state_int = static_cast<int>(state_);
-
-		if (state_int >= static_cast<int>(source_state::lexed))
+		if (state_ >= source_state::preprocessed)
+		{
+			object["preprocessed"] = preprocessed_codes_;
+		}
+		if (state_ >= source_state::lexed)
 		{
 			object["tokens"] = dump_tokens();
 		}
@@ -86,18 +107,16 @@ namespace dlink
 	}
 	nlohmann::json source::dump_tokens() const
 	{
+		if (state_ < source_state::lexed)
+			throw invalid_state("The state must be 'dlink::source_state::lexed' or higher when 'nlohmann::json dlink::source::dump_tokens(void) const' method is called.");
+
 		nlohmann::json array;
 		
-		if (state_ == source_state::lexed)
+		for (const token& token : tokens_)
 		{
-			for (const token& token : tokens_)
-			{
-				array.push_back(token.dump());
-			}
+			array.push_back(token.dump());
 		}
-		else
-			throw invalid_state("The state must be 'dlink::source_state::lexed' when 'nlohmann::json dlink::source::dump_tokens(void) const' method is called.");
-		
+
 		return array;
 	}
 
@@ -112,6 +131,14 @@ namespace dlink
 #endif
 
 		return codes_;
+	}
+	const std::string& source::preprocessed_codes() const noexcept
+	{
+#ifdef DLINK_MULTITHREADING
+		std::lock_guard<std::mutex> guard(preprocessed_codes_mutex_);
+#endif
+
+		return preprocessed_codes_;
 	}
 	const dlink::tokens& source::tokens() const noexcept
 	{
@@ -135,6 +162,15 @@ namespace dlink
 
 		codes_ = std::move(new_codes);
 		state_ = source_state::decoded;
+	}
+	void source::preprocessed_codes(std::string&& new_preprocessed_codes)
+	{
+#ifdef DLINK_MULTITHREADING
+		std::lock_guard<std::mutex> guard(preprocessed_codes_mutex_);
+#endif
+
+		codes_ = std::move(new_preprocessed_codes);
+		state_ = source_state::preprocessed;
 	}
 	void source::tokens(dlink::tokens&& new_tokens)
 	{

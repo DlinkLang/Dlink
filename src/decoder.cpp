@@ -61,8 +61,8 @@ namespace dlink
 	}
 	bool decoder::decode_source(source& source, compiler_metadata& metadata)
 	{
-		if (source.state() != source_state::initialized)
-			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::initialized' when 'static bool dlink::decoder::decode_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
+		if (source.state() >= source_state::initialized)
+			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::initialized' or higher when 'static bool dlink::decoder::decode_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
 
 		std::ifstream stream(source.path(), std::ios::binary);
 

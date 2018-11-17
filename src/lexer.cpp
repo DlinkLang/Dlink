@@ -177,8 +177,8 @@ namespace dlink
 	}
 	bool lexer::lex_source(source& source, compiler_metadata& metadata)
 	{
-		if (source.state() != source_state::decoded)
-			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::decoded' when 'static bool dlink::lexer::lex_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
+		if (source.state() >= source_state::preprocessed)
+			throw invalid_state("The state of the argument 'source' must be 'dlink::source_state::preprocessed' or higher when 'static bool dlink::lexer::lex_source(dlink::source&, dlink::compiler_metadata&)' method is called.");
 		
 		std::vector<token> tokens;
 		if (!lex_preprocess_(source, metadata, tokens)) return false;

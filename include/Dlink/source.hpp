@@ -20,6 +20,7 @@ namespace dlink
 		empty,
 		initialized,
 		decoded,
+		preprocessed,
 		lexed,
 	};
 
@@ -44,8 +45,10 @@ namespace dlink
 		bool empty() const noexcept;
 
 		bool decode(compiler_metadata& metadata);
+		bool preprocess(compiler_metadata& metadata);
 		bool lex(compiler_metadata& metadata);
 
+		bool compile_until_preprocessing(compiler_metadata& metadata);
 		bool compile_until_lexing(compiler_metadata& metadata);
 
 		nlohmann::json dump() const;
@@ -53,6 +56,7 @@ namespace dlink
 
 	public:
 		const std::string& codes() const noexcept;
+		const std::string& preprocessed_codes() const noexcept;
 		const std::string& path() const noexcept;
 		const dlink::tokens& tokens() const noexcept;
 
@@ -60,10 +64,12 @@ namespace dlink
 
 	private:
 		void codes(std::string&& new_codes);
+		void preprocessed_codes(std::string&& new_preprocessed_codes);
 		void tokens(dlink::tokens&& new_tokens);
 
 	private:
 		std::string codes_;
+		std::string preprocessed_codes_;
 		std::string path_;
 		dlink::tokens tokens_;
 
@@ -71,6 +77,7 @@ namespace dlink
 
 #ifdef DLINK_MULTITHREADING
 		mutable std::mutex codes_mutex_;
+		mutable std::mutex preprocessed_codes_mutex_;
 		mutable std::mutex tokens_mutex_;
 #endif
 	};
