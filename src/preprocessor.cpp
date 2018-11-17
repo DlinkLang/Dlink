@@ -84,13 +84,13 @@ namespace dlink
 
 			while (is_whitespace(line_stream, next_c));
 			if (line_stream.eof()) continue_with_append;
-			if (next_c != '#') continue;
+			if (next_c != '#') continue_with_append;
 
 			const std::size_t offset = static_cast<std::size_t>(line_stream.tellg());
 			if (offset >= length)
 			{
 				metadata.messages().push_back(std::make_shared<error_message>(
-					1100, "Unexpected EOF found in preprocessor directive.",
+					1100, message_data::def.error(1100)(),
 					generate_line_col(source.path(), line, offset),
 					generate_source(current_line, line, offset, 1)
 					));
@@ -110,7 +110,7 @@ namespace dlink
 				if (!isalpha(c))
 				{
 					metadata.messages().push_back(std::make_shared<error_message>(
-						1101, "Unexpected token found in preprocessor directive name.",
+						1101, message_data::def.error(1101)(),
 						generate_line_col(source.path(), line, offset + index + 1),
 						generate_source(current_line, line, offset + index + 1, 1)
 						));
@@ -130,7 +130,7 @@ namespace dlink
 					first_space_pos == other.size() - 1)
 				{
 					metadata.messages().push_back(std::make_shared<error_message>(
-						1103, "Occurred due to #error.",
+						1103, message_data::def.error(1103)(),
 						generate_line_col(source.path(), line, offset),
 						generate_source(current_line, line, offset, 6)
 						));
@@ -140,7 +140,7 @@ namespace dlink
 					const std::string_view message = other.substr(first_space_pos + 1);
 
 					metadata.messages().push_back(std::make_shared<error_message>(
-						1104, "#error: " + std::string(message),
+						1104, message_data::def.error(1104)(message),
 						generate_line_col(source.path(), line, offset),
 						generate_source(current_line, line, offset, message.size() + 7)
 						));
@@ -154,7 +154,7 @@ namespace dlink
 					first_space_pos == other.size() - 1)
 				{
 					metadata.messages().push_back(std::make_shared<warning_message>(
-						1100, "Occurred due to #warning.",
+						1100, message_data::def.warning(1100)(),
 						generate_line_col(source.path(), line, offset),
 						generate_source(current_line, line, offset, 8)
 						));
@@ -164,7 +164,7 @@ namespace dlink
 					const std::string_view message = other.substr(first_space_pos + 1);
 
 					metadata.messages().push_back(std::make_shared<warning_message>(
-						1101, "#warning: " + std::string(message),
+						1101, message_data::def.warning(1101)(message),
 						generate_line_col(source.path(), line, offset),
 						generate_source(current_line, line, offset, message.size() + 9)
 						));
@@ -173,7 +173,7 @@ namespace dlink
 			else
 			{
 				metadata.messages().push_back(std::make_shared<error_message>(
-					1105, "Unknown preprocessor directive.",
+					1105, message_data::def.error(1105)(),
 					generate_line_col(source.path(), line, offset),
 					generate_source(current_line, line, offset, type.size() + 1)
 					));

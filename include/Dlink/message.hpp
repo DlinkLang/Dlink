@@ -5,9 +5,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
 #include <string_view>
+
+#include <boost/format.hpp>
 
 namespace dlink
 {
@@ -131,6 +134,64 @@ namespace dlink
 	std::string generate_line_col(const std::string_view& path, std::size_t line, std::size_t col);
 	std::string generate_source(const std::string_view& source, std::size_t line, std::size_t col, std::size_t length,
 								const std::string_view& message = "");
+
+	namespace details
+	{
+		struct message_formater
+		{
+			message_formater(const std::string_view& original_message)
+				: original_message(original_message)
+			{}
+
+			std::string_view operator()() const;
+			template<typename... Args_>
+			std::string operator()(Args_&&... args) const
+			{
+				return (boost::format(original_message.data()) % ... % args).str();
+			}
+
+			std::string_view original_message;
+		};
+	}
+
+	class message_data final
+	{
+	public:
+		message_data();
+		explicit message_data(const std::string& path);
+		message_data(const message_data& data);
+		message_data(message_data&& data) noexcept;
+		~message_data() = default;
+
+	public:
+		message_data& operator=(const message_data& data);
+		message_data& operator=(message_data&& data) noexcept;
+		bool operator==(const message_data& data) const = delete;
+		bool operator!=(const message_data& data) const = delete;
+
+	public:
+		void clear() noexcept;
+		void swap(message_data& data) noexcept;
+		bool empty() const noexcept;
+
+		void load(const std::string& path);
+
+	private:
+		void load_english_messages_();
+
+	public:
+		details::message_formater error(std::uint16_t id) const;
+		details::message_formater warning(std::uint16_t id) const;
+		details::message_formater info(std::uint16_t id) const;
+
+	private:
+		std::map<std::uint16_t, std::string> error_messages_;
+		std::map<std::uint16_t, std::string> warning_messages_;
+		std::map<std::uint16_t, std::string> info_messages_;
+		
+	public:
+		static message_data def;
+	};
 }
 
 #endif

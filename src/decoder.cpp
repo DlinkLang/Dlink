@@ -69,7 +69,7 @@ namespace dlink
 		if (!stream.is_open())
 		{
 			metadata.messages().push_back(std::make_shared<error_message>(
-				1000, "Failed to open the input.", source.path()
+				1000, message_data::def.error(1000)(), source.path()
 				));
 
 			return false;
@@ -81,7 +81,7 @@ namespace dlink
 			metadata.options().input_encoding() != detected_encoding)
 		{
 			metadata.messages().push_back(std::make_shared<error_message>(
-				1002, "The input isn't encoded in '" + to_string(metadata.options().input_encoding()) + "'.", source.path()
+				1002, message_data::def.error(1002)(to_string(metadata.options().input_encoding())), source.path()
 				));
 
 			return false;
@@ -120,7 +120,7 @@ namespace dlink
 			if (invalid_iter != str.end())
 			{
 				metadata.messages().push_back(std::make_shared<error_message>(
-					1001, "Failed to decode the input using '" + to_string(detected_encoding) + "'.", source.path()
+					1001, message_data::def.error(1001)("UTF-8"), source.path()
 					));
 
 				return false;
@@ -138,7 +138,7 @@ namespace dlink
 		if (length % 2 != 0)
 		{
 			metadata.messages().push_back(std::make_shared<error_message>(
-				1001, "Failed to decode the input using '" + to_string(detected_encoding) + "'."
+				1001, message_data::def.error(1001)(to_string(detected_encoding))
 				));
 
 			return false;
@@ -171,7 +171,7 @@ namespace dlink
 		if (length % 4 != 0)
 		{
 			metadata.messages().push_back(std::make_shared<error_message>(
-				1001, "Failed to decode the input using '" + to_string(detected_encoding) + "'."
+				1001, message_data::def.error(1001)(to_string(detected_encoding))
 				));
 
 			return false;

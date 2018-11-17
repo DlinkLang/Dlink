@@ -211,7 +211,7 @@ namespace dlink
 					if (next_token.type() != token_type::integer_dec)
 					{
 						metadata.messages().push_back(std::make_shared<error_message>(
-							20011, "Invalid decimal literal format.",
+							2011, message_data::def.error(2011)(),
 							generate_line_col(source.path(), prev_token.line(), prev_token.col() + 1),
 							generate_source(cur_token.line_data(), prev_token.line(), prev_token.col() + 1, prev_token.data().size() + 1)
 							));
@@ -262,6 +262,8 @@ namespace dlink
 
 		for (std::string_view current_line : source.preprocessed_codes())
 		{
+			++line;
+
 			const std::size_t length = current_line.size();
 			memstream line_stream(current_line.data(), length);
 
@@ -385,7 +387,7 @@ namespace dlink
 							using namespace std::string_literals;
 
 							metadata.messages().push_back(std::make_shared<error_message>(
-								2006, "'"s + next_c + "' is an invalid token.",
+								2006, message_data::def.error(2006)(next_c),
 								generate_line_col(source.path(), line, offset + 1),
 								generate_source(current_line, line, offset + 1, 1)
 								));
@@ -442,7 +444,7 @@ namespace dlink
 				using namespace std::string_literals;
 
 				metadata.messages().push_back(std::make_shared<error_message>(
-					2008, "Unexpected EOL found in character literal.",
+					2008, message_data::def.error(2008)(),
 					generate_line_col(source.path(), string_or_character_line, string_or_character_col),
 					generate_source(current_line, string_or_character_line, string_or_character_col, 1)
 					));
@@ -453,7 +455,7 @@ namespace dlink
 				using namespace std::string_literals;
 
 				metadata.messages().push_back(std::make_shared<error_message>(
-					2009, "Unexpected EOL found in string literal.",
+					2009, message_data::def.error(2009)(),
 					generate_line_col(source.path(), string_or_character_line, string_or_character_col),
 					generate_source(current_line, string_or_character_line, string_or_character_col, 1)
 					));
@@ -471,7 +473,7 @@ namespace dlink
 			using namespace std::string_literals;
 
 			metadata.messages().push_back(std::make_shared<error_message>(
-				2007, "Unexpected EOF found in comment.",
+				2007, message_data::def.error(2007)(),
 				generate_line_col(source.path(), multiline_comment_line, multiline_comment_col),
 				generate_source(multiline_comment_line_data, multiline_comment_line, multiline_comment_col, 2)
 				));
@@ -520,7 +522,7 @@ namespace dlink
 					if (std::isdigit(c))
 					{
 						data.metadata.messages().push_back(std::make_shared<error_message>(
-							2001, "Invalid digit '"s + c + "' in octal literal.",
+							2001, message_data::def.error(2001)(c),
 							generate_line_col(data.source.path(), token_line, i + 1),
 							generate_source(data.token.line_data(), token_line, i + 1, 1)
 							));
@@ -594,7 +596,7 @@ namespace dlink
 						
 						invalid:
 							data.metadata.messages().push_back(std::make_shared<error_message>(
-								2010, "Invalid scientific notation format.",
+								2010, message_data::def.error(2010)(),
 								generate_line_col(data.source.path(), token_line, data.token.col() + 1),
 								generate_source(data.token.line_data(), token_line, data.token.col() + 1, data.token.data().size() + next_next_token.data().size() + 1)
 								));
@@ -681,7 +683,7 @@ namespace dlink
 		if (data.token.data().size() == 2)
 		{
 			data.metadata.messages().push_back(std::make_shared<error_message>(
-				error_id_invalid_format(), "Invalid "s + base_string() + " literal.",
+				error_id_invalid_format(), message_data::def.error(error_id_invalid_format())(),
 				generate_line_col(data.source.path(), token_line, token_col),
 				generate_source(data.token.line_data(), token_line, token_col, 2)
 				));
@@ -690,6 +692,8 @@ namespace dlink
 
 		const std::string_view token_data = data.token.data().substr(2);
 		
+		bool ok = true;
+
 		for (std::size_t i = 0; i < token_data.size(); ++i)
 		{
 			const char c = token_data[i];
@@ -702,11 +706,11 @@ namespace dlink
 				if (base == 2 && std::isdigit(c))
 				{
 					data.metadata.messages().push_back(std::make_shared<error_message>(
-						error_id_invalid_digit(), "Invalid digit '"s + c + "' in " + base_string() + " literal.",
+						error_id_invalid_digit(), message_data::def.error(error_id_invalid_digit())(c),
 						generate_line_col(data.source.path(), token_line, i + 3),
 						generate_source(data.token.line_data(), token_line, i + 3, 1)
 						));
-					return false;
+					ok = false;
 				}
 				else
 				{
@@ -717,6 +721,6 @@ namespace dlink
 			}
 		}
 
-		return true;
+		return ok;
 	}
 }
