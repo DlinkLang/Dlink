@@ -285,7 +285,7 @@ namespace dlink
 	{
 		using memstream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;
 
-		memstream stream(const_cast<char*>(source.codes().c_str()), source.codes().length());
+		memstream stream(const_cast<char*>(source.preprocessed_codes().c_str()), source.preprocessed_codes().length());
 		std::size_t line = 0;
 		std::string_view current_line;
 		bool ok = true;
@@ -294,7 +294,7 @@ namespace dlink
 		std::size_t multiline_comment_line = 0, multiline_comment_col = 0;
 		std::string_view multiline_comment_line_data;
 
-		while (getline(stream, source.codes().c_str(), current_line))
+		while (getline(stream, source.preprocessed_codes().c_str(), current_line))
 		{
 			++line;
 
