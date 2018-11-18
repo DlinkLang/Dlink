@@ -92,11 +92,24 @@ namespace dlink
 		integer,
 	};
 
+	enum class command_parameter_format
+	{
+		separated = 0b001, // -a b
+		assigned = 0b010,  // -a=b
+		attached = 0b100,  // -ab
+
+		all = separated | assigned | attached,
+	};
+	
+	bool operator&(command_parameter_format lhs, command_parameter_format rhs) noexcept;
+	command_parameter_format operator|(command_parameter_format lhs, command_parameter_format rhs) noexcept;
+
 	class command final
 	{
 	public:
 		command(const std::string_view& command, const std::string_view& description);
 		command(const std::string_view& command, const std::string_view& description, command_parameter parameter);
+		command(const std::string_view& command, const std::string_view& description, command_parameter parameter, command_parameter_format format);
 		command(const command& command) noexcept;
 		~command() = default;
 
@@ -113,12 +126,14 @@ namespace dlink
 		std::string_view short_command() const noexcept;
 		std::string_view description() const noexcept;
 		command_parameter parameter() const noexcept;
+		command_parameter_format parameter_format() const noexcept;
 
 	private:
 		std::string_view long_;
 		std::string_view short_;
 		std::string_view description_;
 		command_parameter parameter_ = command_parameter::none;
+		command_parameter_format parameter_format_ = command_parameter_format::separated;
 	};
 
 	class command_line_parser;
@@ -142,6 +157,8 @@ namespace dlink
 			command_line_parser_add_options& operator()(command&& command);
 			command_line_parser_add_options& operator()(const std::string_view& command, const std::string_view& description);
 			command_line_parser_add_options& operator()(const std::string_view& command, const std::string_view& description, command_parameter parameter);
+			command_line_parser_add_options& operator()(const std::string_view& command, const std::string_view& description, command_parameter parameter,
+														command_parameter_format format);
 			command_line_parser_add_options& operator()();
 
 		public:
@@ -197,6 +214,7 @@ namespace dlink
 		void add_option(command&& command);
 		void add_option(const std::string_view& command, const std::string_view& description);
 		void add_option(const std::string_view& command, const std::string_view& description, command_parameter parameter);
+		void add_option(const std::string_view& command, const std::string_view& description, command_parameter parameter, command_parameter_format format);
 		void add_section();
 		details::command_line_parser_add_options add_options() noexcept;
 		command_line_parser_result parse(int argc, char** argv) const;

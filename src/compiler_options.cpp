@@ -152,6 +152,18 @@ namespace dlink
 
 namespace dlink
 {
+	bool operator&(command_parameter_format lhs, command_parameter_format rhs) noexcept
+	{
+		return (static_cast<int>(lhs) & static_cast<int>(rhs)) == static_cast<int>(rhs);
+	}
+	command_parameter_format operator|(command_parameter_format lhs, command_parameter_format rhs) noexcept
+	{
+		return static_cast<command_parameter_format>(static_cast<int>(lhs) | static_cast<int>(rhs));
+	}
+}
+
+namespace dlink
+{
 	command::command(const std::string_view& command, const std::string_view& description)
 		: description_(description)
 	{
@@ -162,8 +174,13 @@ namespace dlink
 	{
 		parse_command_(command);
 	}
+	command::command(const std::string_view& command, const std::string_view& description, command_parameter parameter, command_parameter_format format)
+		: description_(description), parameter_(parameter), parameter_format_(format)
+	{
+		parse_command_(command);
+	}
 	command::command(const command& command) noexcept
-		: long_(command.long_), short_(command.short_), description_(command.description_), parameter_(command.parameter_)
+		: long_(command.long_), short_(command.short_), description_(command.description_), parameter_(command.parameter_), parameter_format_(command.parameter_format_)
 	{}
 
 	command& command::operator=(const command& command) noexcept
@@ -172,6 +189,7 @@ namespace dlink
 		short_ = command.short_;
 		description_ = command.description_;
 		parameter_ = command.parameter_;
+		parameter_format_ = command.parameter_format_;
 
 		return *this;
 	}
@@ -207,6 +225,10 @@ namespace dlink
 	{
 		return parameter_;
 	}
+	command_parameter_format command::parameter_format() const noexcept
+	{
+		return parameter_format_;
+	}
 }
 
 namespace dlink::details
@@ -230,6 +252,11 @@ namespace dlink::details
 	command_line_parser_add_options& command_line_parser_add_options::operator()(const std::string_view& command, const std::string_view& description, command_parameter parameter)
 	{
 		return parser_.add_option(command, description, parameter), *this;
+	}
+	command_line_parser_add_options& command_line_parser_add_options::operator()(const std::string_view& command, const std::string_view& description, command_parameter parameter,
+																				 command_parameter_format format)
+	{
+		return parser_.add_option(command, description, parameter, format), *this;
 	}
 	command_line_parser_add_options& command_line_parser_add_options::operator()()
 	{
@@ -449,6 +476,10 @@ namespace dlink
 	{
 		commands_.back().emplace_back(command, description, parameter);
 	}
+	void command_line_parser::add_option(const std::string_view& command, const std::string_view& description, command_parameter parameter, command_parameter_format format)
+	{
+		commands_.back().emplace_back(command, description, parameter, format);
+	}
 	details::command_line_parser_add_options command_line_parser::add_options() noexcept
 	{
 		return details::command_line_parser_add_options(*this);
@@ -471,6 +502,7 @@ namespace dlink
 					throw std::string("Error: invalid command format.");
 
 				const dlink::command* matched_command_info = nullptr;
+				const dlink::command* first_matched_command_info = nullptr;
 				std::string_view(dlink::command::*function)() const noexcept = nullptr;
 
 				if (command[1] == '-')
@@ -487,17 +519,31 @@ namespace dlink
 					function = &dlink::command::short_command;
 				}
 
+				const std::size_t assign_pos = command.find('=');
+
 				for (const auto& section : commands_)
 				{
 					for (const auto& command_info : section)
 					{
-						if ((command_info.*function)() == command)
+						if (command_info.short_command() == command.substr(0, 1) &&
+							function == &dlink::command::short_command)
+						{
+							first_matched_command_info = &command_info;
+						}
+						
+						const std::string_view name = (command_info.*function)();
+
+						if ((assign_pos == std::string_view::npos && name == command) ||
+							(assign_pos != std::string_view::npos && name == command.substr(0, assign_pos)))
 						{
 							matched_command_info = &command_info;
-							goto br;
 						}
+
+						if (first_matched_command_info && matched_command_info) goto br;
 					}
 				}
+				
+				if (matched_command_info || first_matched_command_info) goto br;
 
 				if (function == &dlink::command::long_command)
 					throw std::string("Error: unknown command '--") + std::string(command) + "'.";
@@ -505,28 +551,106 @@ namespace dlink
 					throw std::string("Error: unknown command '-") + std::string(command) + "'.";
 
 			br:
-				if (matched_command_info->parameter() != command_parameter::none)
+				if (first_matched_command_info)
 				{
-					if (++i >= argc || argv[i][0] == '-')
-						throw std::string("Error: no argument for '" + std::string(command) + "'.");
-
-					const std::string argument = argv[i];
-
-					switch (matched_command_info->parameter())
+					if (command.size() == 1 || assign_pos != std::string_view::npos) goto matched;
+					
+					if (first_matched_command_info->parameter() != command_parameter::none)
 					{
-					case command_parameter::string:
-						result[matched_command_info].push_back(argument);
-						break;
+						const command_parameter_format format = first_matched_command_info->parameter_format();
 
-					case command_parameter::integer:
-						result[matched_command_info].push_back(std::stoi(argument));
-						break;
+						if (format & command_parameter_format::attached)
+						{
+							const std::string argument(command.substr(1));
+
+							switch (first_matched_command_info->parameter())
+							{
+							case command_parameter::string:
+								result[first_matched_command_info].push_back(argument);
+								break;
+
+							case command_parameter::integer:
+								result[first_matched_command_info].push_back(std::stoi(argument));
+								break;
+							}
+
+							continue;
+						}
 					}
 				}
-				else
+				if (matched_command_info)
 				{
-					result[matched_command_info].emplace_back();
+				matched:
+					if (matched_command_info->parameter() != command_parameter::none)
+					{
+						if (assign_pos != std::string_view::npos)
+						{
+							if ((matched_command_info->parameter_format() & command_parameter_format::assigned) == false)
+							{
+								if (function == &dlink::command::long_command)
+									throw std::string("Error: invalid argument format for '--") + std::string(command) + "'.";
+								else
+									throw std::string("Error: invalid argument format for '-") + std::string(command) + "'.";
+							}
+							else if (assign_pos + 1 == command.size())
+							{
+								command.remove_suffix(1);
+								if (function == &dlink::command::long_command)
+									throw std::string("Error: no argument for '--") + std::string(command) + "'.";
+								else
+									throw std::string("Error: no argument for '-") + std::string(command) + "'.";
+							}
+
+							const std::string argument(command.substr(assign_pos + 1));
+
+							switch (matched_command_info->parameter())
+							{
+							case command_parameter::string:
+								result[matched_command_info].push_back(argument);
+								break;
+
+							case command_parameter::integer:
+								result[matched_command_info].push_back(std::stoi(argument));
+								break;
+							}
+
+							continue;
+						}
+
+						if ((matched_command_info->parameter_format() & command_parameter_format::separated) == false)
+						{
+							if (function == &dlink::command::long_command)
+								throw std::string("Error: invalid argument format for '--") + std::string(command) + "'.";
+							else
+								throw std::string("Error: invalid argument format for '-") + std::string(command) + "'.";
+						}
+
+						if (++i >= argc || argv[i][0] == '-')
+							throw std::string("Error: no argument for '") + std::string(command) + "'.";
+
+						const std::string argument = argv[i];
+
+						switch (matched_command_info->parameter())
+						{
+						case command_parameter::string:
+							result[matched_command_info].push_back(argument);
+							break;
+
+						case command_parameter::integer:
+							result[matched_command_info].push_back(std::stoi(argument));
+							break;
+						}
+
+						continue;
+					}
+					else
+					{
+						result[matched_command_info].emplace_back();
+						continue;
+					}
 				}
+				
+				throw std::string("Error: invalid argument format for '-") + command[0] + "'.";
 			}
 			else
 			{
@@ -564,11 +688,11 @@ namespace dlink
 			("version", "Display compiler version information.")
 			()
 #ifdef DLINK_MULTITHREADING
-			("jobs,j", "Set the maximum number of threads to use when compiling.", command_parameter::integer)
+			(",j", "Set the maximum number of threads to use when compiling.", command_parameter::integer, command_parameter_format::all)
 #endif
-			(",o", "Place the output into 'arg'.", command_parameter::string)
+			(",o", "Place the output into 'arg'.", command_parameter::string, command_parameter_format::all)
 			()
-			(",finput-encoding", "Set the input encoding.", command_parameter::string);
+			(",finput-encoding", "Set the input encoding.", command_parameter::string, command_parameter_format::separated | command_parameter_format::assigned);
 		parser.accept_non_command = true;
 
 		try
