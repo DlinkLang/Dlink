@@ -249,6 +249,26 @@ namespace dlink
 		return ok;
 	}
 
+	bool lexer::check_invalid_identifier(const std::string_view& string)
+	{
+		boost::iostreams::stream<boost::iostreams::basic_array_source<char>> stream(string.data(), string.size());
+		char next_c;
+
+		while (true)
+		{
+			if (is_whitespace(stream, next_c))
+			{
+				if (stream.eof()) return false;
+				else return true;
+			}
+			else if (is_special_character(next_c)) return true;
+
+			stream.seekg(get_character_length(next_c) - 1, std::ios::cur);
+		}
+
+		return false;
+	}
+
 	bool lexer::lex_preprocess_(source& source, compiler_metadata& metadata, std::vector<token>& tokens)
 	{
 		using memstream = boost::iostreams::stream<boost::iostreams::basic_array_source<char>>;

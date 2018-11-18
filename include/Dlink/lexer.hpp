@@ -43,6 +43,8 @@ namespace dlink
 		static bool lex_singlethread(compiler_metadata& metadata, std::vector<source>& sources);
 		static bool lex_source(source& source, compiler_metadata& metadata);
 
+		static bool check_invalid_identifier(const std::string_view& string);
+
 	private:
 		static bool lex_preprocess_(source& source, compiler_metadata& metadata, std::vector<token>& tokens);
 		static bool lex_number_(internal_lexing_data_ data, bool cannot_sn = false);

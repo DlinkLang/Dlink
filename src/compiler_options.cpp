@@ -1,5 +1,7 @@
 #include <Dlink/compiler_options.hpp>
 
+#include <Dlink/lexer.hpp>
+
 #include <algorithm>
 #include <cctype>
 #include <fstream>
@@ -39,6 +41,8 @@ namespace dlink
 		input_files_ = options.input_files_;
 		output_file_ = options.output_file_;
 
+		macros_ = options.macros_;
+
 		input_encoding_ = options.input_encoding_;
 
 		return *this;
@@ -54,6 +58,8 @@ namespace dlink
 		input_files_ = std::move(options.input_files_);
 		output_file_ = std::move(options.output_file_);
 
+		macros_ = std::move(options.macros_);
+
 		input_encoding_ = std::move(options.input_encoding_);
 
 		options.moved_();
@@ -65,6 +71,8 @@ namespace dlink
 	{
 		input_files_.clear();
 		output_file_.clear();
+
+		macros_.clear();
 
 		input_encoding_ = encoding::none;
 
@@ -82,6 +90,14 @@ namespace dlink
 
 		if (iter == input_files_.end())
 			throw std::invalid_argument("Failed to remove the argument 'string'.");
+	}
+	void compiler_options::add_macro(const std::string& macro)
+	{
+		macros_[macro];
+	}
+	void compiler_options::add_macro(const std::string& macro, const std::string& replaced)
+	{
+		macros_[macro] = replaced;
 	}
 
 	void compiler_options::moved_() noexcept
@@ -138,6 +154,11 @@ namespace dlink
 	void compiler_options::output_file(const std::string_view& new_output_file)
 	{
 		output_file_ = new_output_file;
+	}
+
+	const std::map<std::string, std::string>& compiler_options::macros() const noexcept
+	{
+		return macros_;
 	}
 
 	encoding compiler_options::input_encoding() const noexcept
@@ -572,7 +593,8 @@ namespace dlink
 			br:
 				if (first_matched_command_info)
 				{
-					if (command.size() == 1 || assign_pos != std::string_view::npos) goto matched;
+					if (command.size() == 1) goto matched;
+					else if (assign_pos != std::string_view::npos && matched_command_info) goto matched;
 					
 					if (first_matched_command_info->parameter() != command_parameter::none)
 					{
@@ -711,6 +733,8 @@ namespace dlink
 #endif
 			(",o", "Place the output into 'arg'.", command_parameter::string, command_parameter_format::all)
 			()
+			(",D", "Define the macro for preprocessor.", command_parameter::string, command_parameter_format::separated | command_parameter_format::attached)
+			()
 			(",finput-encoding", "Set the input encoding.", command_parameter::string, command_parameter_format::separated | command_parameter_format::assigned);
 		parser.accept_non_command = true;
 
@@ -756,6 +780,51 @@ namespace dlink
 				}
 
 				options.output_file(std::any_cast<std::string>(result.argument("-o").front()));
+			}
+
+			std::string macro_dup;
+
+			temp = result.count("-D");
+			if (temp)
+			{
+				std::vector<std::any> arguments = result.argument("-D");
+
+				for (std::any& argument : arguments)
+				{
+					const std::string argument_str = std::any_cast<std::string>(argument);
+					const std::size_t argument_str_assign_pos = argument_str.find('=');
+
+					if (argument_str_assign_pos == std::string_view::npos)
+					{
+					replaced_empty:
+						if (options.macros().find(argument_str) == options.macros().end())
+						{
+							options.add_macro(argument_str);
+						}
+						else
+						{
+							macro_dup = argument_str;
+							break;
+						}
+					}
+					else
+					{
+						if (argument_str_assign_pos + 1 == argument_str.size()) goto replaced_empty;
+
+						const std::string macro = argument_str.substr(0, argument_str_assign_pos);
+						const std::string replaced = argument_str.substr(argument_str_assign_pos + 1);
+
+						if (options.macros().find(macro) == options.macros().end())
+						{
+							options.add_macro(macro, replaced);
+						}
+						else
+						{
+							macro_dup = macro;
+							break;
+						}
+					}
+				}
 			}
 
 			temp = result.count("-finput-encoding");
@@ -841,6 +910,22 @@ namespace dlink
 				stream << "Error: no input files.\n\n";
 
 				return false;
+			}
+
+			if (!macro_dup.empty())
+			{
+				stream << "Error: the macro('" + macro_dup + "') is duplicated.\n\n";
+
+				return false;
+			}
+			for (const auto& [macro, replaced] : options.macros())
+			{
+				if (lexer::check_invalid_identifier(macro))
+				{
+					stream << "Error: the macro('" + macro + "') isn't a valid identifier.\n\n";
+
+					return false;
+				}
 			}
 
 			if (!input_encoding_temp.empty())

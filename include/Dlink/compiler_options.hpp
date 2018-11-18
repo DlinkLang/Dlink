@@ -48,6 +48,8 @@ namespace dlink
 
 		void add_input(const std::string& string);
 		void remove_input(const std::string& string);
+		void add_macro(const std::string& macro);
+		void add_macro(const std::string& macro, const std::string& replaced);
 
 	private:
 		void moved_() noexcept;
@@ -66,6 +68,8 @@ namespace dlink
 		const std::string& output_file() const noexcept;
 		void output_file(const std::string_view& new_output_file);
 
+		const std::map<std::string, std::string>& macros() const noexcept;
+
 		encoding input_encoding() const noexcept;
 		void input_encoding(encoding new_encoding_type) noexcept;
 
@@ -78,6 +82,8 @@ namespace dlink
 #endif
 		std::vector<std::string> input_files_;
 		std::string output_file_;
+
+		std::map<std::string, std::string> macros_;
 
 		encoding input_encoding_ = encoding::none;
 
