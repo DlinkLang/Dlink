@@ -400,7 +400,9 @@ namespace dlink
 				const std::size_t short_len = command.short_command().length();
 				const std::size_t len = long_len + short_len;
 
-				max_length = std::max(max_length, len + (long_len != len && short_len != len ? 4 : 0) + (command.parameter() != command_parameter::none ? 4 : 0));
+				max_length = std::max(max_length, len + (long_len != len && short_len != len ? 4 : 0)
+									  + (command.parameter() != command_parameter::none ? 6 : 0)
+									  - (command.parameter_format() == command_parameter_format::attached ? 1 : 0));
 			}
 		}
 		
@@ -411,9 +413,26 @@ namespace dlink
 				const std::size_t long_len = command.long_command().length();
 				const std::size_t short_len = command.short_command().length();
 
-				const std::string_view arg = command.parameter() != command_parameter::none ? " arg" : "";
-				const std::size_t arg_len = arg.length();
+				std::string_view arg;
+				if (command.parameter() != command_parameter::none)
+				{
+					const command_parameter_format format = command.parameter_format();
 
+					if (format & command_parameter_format::separated)
+					{
+						arg = " <arg>";
+					}
+					else if (format & command_parameter_format::attached)
+					{
+						arg = "<arg>";
+					}
+					else
+					{
+						arg = "=<arg>";
+					}
+				}
+				const std::size_t arg_len = arg.size();
+				
 				if (long_len && !short_len)
 				{
 					stream << "  --" << command.long_command() << arg << std::string(max_length - long_len - arg_len + 1, ' ')
