@@ -28,7 +28,7 @@ namespace dlink
 
 			for (std::size_t i = begin; i < end; ++i)
 			{
-				result = result && preprocess_source(sources[i], metadata);
+				result = preprocess_source(sources[i], metadata) && result;
 			}
 
 			return result;
@@ -45,7 +45,7 @@ namespace dlink
 
 		for (source& src : sources)
 		{
-			result = result && preprocess_source(src, metadata);
+			result = preprocess_source(src, metadata) && result;
 		}
 
 		return result;

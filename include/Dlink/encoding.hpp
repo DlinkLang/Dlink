@@ -5,6 +5,8 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace dlink
 {
@@ -87,6 +89,8 @@ namespace dlink
 	std::string to_string(dlink::whitespace whitespace);
 	bool is_whitespace(std::istream& stream);
 	bool is_whitespace(std::istream& stream, char& output);
+	bool is_whitespace(std::istream& stream, char& output, whitespace& type);
+	std::pair<std::string, std::vector<std::pair<std::size_t, std::size_t>>> replace_with_space(const std::string_view& string);
 
 	bool isdigit(char c) noexcept;
 	bool isalpha(char c) noexcept;

@@ -1,5 +1,6 @@
 #include <Dlink/message.hpp>
 
+#include <Dlink/encoding.hpp>
 #include <Dlink/extlib/json.hpp>
 
 #include <algorithm>
@@ -240,12 +241,31 @@ namespace dlink
 								const std::string_view& message)
 	{
 		const std::string line_string = std::to_string(line);
+		const auto [replaced_source, replaced_pos] = replace_with_space(source);
 		const std::string empty_line = std::string(line_string.size(), ' ') + " |";
 		std::string result = std::string(line_string.size(), ' ') + " |\n" +
-							 line_string + " | " + std::string(source.data(), source.length()) + '\n';
+							 line_string + " | " + replaced_source + '\n';
+
+		std::size_t col_plus = 0;
+		std::size_t len_plus = 0;
+
+		for (const std::pair<std::size_t, std::size_t>& pos : replaced_pos)
+		{
+			const std::size_t pos_col = pos.first + 1;
+			const std::size_t plus = pos.second - 1;
+
+			if (pos_col >= col && pos_col < col + length)
+			{
+				len_plus += plus;
+			}
+			else if (pos_col < col)
+			{
+				col_plus += plus;
+			}
+		}
 
 		result += empty_line;
-		result += std::string(col, ' ') + std::string(length, '^');
+		result += std::string(col + col_plus, ' ') + std::string(length + len_plus, '^');
 		
 		if (!message.empty())
 		{

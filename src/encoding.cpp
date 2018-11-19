@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <cctype>
 
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/device/array.hpp>
+
 namespace dlink
 {
 	std::string to_string(dlink::encoding encoding)
@@ -359,59 +362,30 @@ namespace dlink
 	}
 	bool is_whitespace(std::istream& stream)
 	{
-		char c;
-		stream.read(&c, 1);
+		char dummy_output;
+		whitespace dummy_type;
 
-		if (!stream.good())
-			return true;
+		const bool result = is_whitespace(stream, dummy_output, dummy_type);
+		if (result) return true;
 
-		const int length = get_character_length(c);
-
-		if (length == 4)
-		{
-			stream.seekg(-1, std::ios::cur);
-			return false;
-		}
-
-		if (length == 1)
-		{
-			if (whitespaces.find(std::string_view(&c, 1)) != whitespaces.end())
-			{
-				stream.read(&c, 1);
-
-				if (c != '\u000A')
-				{
-					stream.seekg(-1, std::ios::cur);
-				}
-
-				return true;
-			}
-			stream.seekg(-1, std::ios::cur);
-		}
-		else
-		{
-			char c_array[3] = { c, 0, 0 };
-			stream.read(c_array + 1, length - 1);
-
-			if (whitespaces.find(std::string_view(c_array, length)) != whitespaces.end())
-			{
-				return true;
-			}
-
-			stream.seekg(-(length - 1), std::ios::cur);
-		}
+		const int dummy_output_size = get_character_length(dummy_output);
+		stream.seekg(dummy_output_size);
 
 		return false;
 	}
 	bool is_whitespace(std::istream& stream, char& output)
 	{
+		whitespace dummy;
+		return is_whitespace(stream, output, dummy);
+	}
+	bool is_whitespace(std::istream& stream, char& output, whitespace& type)
+	{
 		char c;
 		stream.read(&c, 1);
-
-		if (!stream.good())
-			return true;
+		if (!stream.good()) return true;
 
 		const int length = get_character_length(c);
+		output = c;
 
 		if (length == 4)
 		{
@@ -419,14 +393,24 @@ namespace dlink
 			stream.seekg(3, std::ios::cur);
 			return false;
 		}
-
+		
 		if (length == 1)
 		{
-			if (whitespaces.find(std::string_view(&c, 1)) != whitespaces.end())
+			if (std::map<std::string_view, whitespace>::const_iterator iter = whitespaces.find(std::string_view(&c, 1));
+				iter != whitespaces.end())
 			{
-				stream.read(&c, 1);
+				type = iter->second;
 
-				if (c != '\u000A')
+				const char prev_c = c;
+
+				stream.read(&c, 1);
+				if (!stream.good()) return true;
+
+				if (prev_c == '\u000D' && c == '\u000A')
+				{
+					type = whitespace::carriage_return_line_feed;
+				}
+				else
 				{
 					stream.seekg(-1, std::ios::cur);
 				}
@@ -439,14 +423,84 @@ namespace dlink
 			char c_array[3] = { c, 0, 0 };
 			stream.read(c_array + 1, length - 1);
 
-			if (whitespaces.find(std::string_view(c_array, length)) != whitespaces.end())
+			if (std::map<std::string_view, whitespace>::const_iterator iter = whitespaces.find(std::string_view(c_array, length));
+				iter != whitespaces.end())
 			{
+				type = iter->second;
 				return true;
 			}
 		}
 
 		output = c;
 		return false;
+	}
+	std::pair<std::string, std::vector<std::pair<std::size_t, std::size_t>>> replace_with_space(const std::string_view& string)
+	{
+		static const std::map<dlink::whitespace, std::string_view> map =
+		{
+			{ dlink::whitespace::tab, "    " },
+			{ dlink::whitespace::space, " " },
+#ifndef DLINK_LEAN_AND_MEAN
+			{ dlink::whitespace::no_break_space, " " },
+			{ dlink::whitespace::ogham_space_mark, " " },
+			{ dlink::whitespace::en_quad, " " },
+			{ dlink::whitespace::em_quad, " " },
+			{ dlink::whitespace::en_space, " " },
+			{ dlink::whitespace::em_space, " " },
+			{ dlink::whitespace::three_per_em_space, " " },
+			{ dlink::whitespace::four_per_em_space, " " },
+			{ dlink::whitespace::six_per_em_space, " " },
+			{ dlink::whitespace::figure_space, " " },
+			{ dlink::whitespace::punctuation_space, " " },
+			{ dlink::whitespace::thin_space, " " },
+			{ dlink::whitespace::hair_space, " " },
+			{ dlink::whitespace::narrow_no_break_space, " " },
+			{ dlink::whitespace::medium_mathematical_space, " " },
+#endif
+			{ dlink::whitespace::ideographic_space, " " },
+		};
+
+		std::string result;
+		std::vector<std::pair<std::size_t, std::size_t>> replaced_pos;
+
+		boost::iostreams::stream<boost::iostreams::basic_array_source<char>> stream(string.data(), string.size());
+
+		std::size_t offset = 0;
+		std::size_t length = 0;
+
+		while (!stream.eof())
+		{
+			char c;
+			whitespace whitespace_type;
+			
+			if (is_whitespace(stream, c, whitespace_type))
+			{
+				result += string.substr(offset, length);
+				offset += length;
+				length = 0;
+
+				if (stream.eof()) break;
+
+				if (const std::map<whitespace, std::string_view>::const_iterator iter = map.find(whitespace_type);
+					iter != map.end())
+				{
+					result += iter->second;
+					replaced_pos.push_back(std::make_pair(offset, iter->second.size()));
+				}
+				else
+				{
+					result += string.substr(offset, get_character_length(c));
+				}
+
+				offset += get_character_length(c);
+			}
+			else
+			{
+				length += get_character_length(c);
+			}
+		}
+
+		return std::make_pair(std::move(result), std::move(replaced_pos));
 	}
 
 	bool isdigit(char c) noexcept

@@ -121,7 +121,7 @@ namespace dlink
 
 			for (std::size_t i = begin; i < end; ++i)
 			{
-				result = result && lex_source(sources[i], metadata);
+				result = lex_source(sources[i], metadata) && result;
 			}
 
 			return result;
@@ -138,7 +138,7 @@ namespace dlink
 
 		for (source& src : sources)
 		{
-			result = result && lex_source(src, metadata);
+			result = lex_source(src, metadata) && result;
 		}
 
 		return result;
@@ -166,7 +166,7 @@ namespace dlink
 
 				if (isdigit(first_c))
 				{
-					ok = ok && lex_number_(make_internal_lexing_data());
+					ok = lex_number_(make_internal_lexing_data()) && ok;
 				}
 				else
 				{
@@ -543,8 +543,8 @@ namespace dlink
 					{
 						data.metadata.messages().push_back(std::make_shared<error_message>(
 							2001, message_data::def.error(2001)(c),
-							generate_line_col(data.source.path(), token_line, i + 1),
-							generate_source(data.token.line_data(), token_line, i + 1, 1)
+							generate_line_col(data.source.path(), token_line, data.token.col() + i + 1),
+							generate_source(data.token.line_data(), token_line, data.token.col() + i + 1, 1)
 							));
 						return false;
 					}
@@ -727,8 +727,8 @@ namespace dlink
 				{
 					data.metadata.messages().push_back(std::make_shared<error_message>(
 						error_id_invalid_digit(), message_data::def.error(error_id_invalid_digit())(c),
-						generate_line_col(data.source.path(), token_line, i + 3),
-						generate_source(data.token.line_data(), token_line, i + 3, 1)
+						generate_line_col(data.source.path(), token_line, data.token.col() + i + 3),
+						generate_source(data.token.line_data(), token_line, data.token.col() + i + 3, 1)
 						));
 					ok = false;
 				}

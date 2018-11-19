@@ -28,7 +28,7 @@ namespace dlink
 
 			for (std::size_t i = begin; i < end; ++i)
 			{
-				result = result && decode_source(results[i], metadata);
+				result = decode_source(results[i], metadata) && result;
 			}
 
 			return result;
@@ -54,7 +54,7 @@ namespace dlink
 		for (const std::string& path : metadata.options().input_files())
 		{
 			source& src = results.emplace_back(path);
-			result = result && decode_source(src, metadata);
+			result = decode_source(src, metadata) && result;
 		}
 
 		return result;
